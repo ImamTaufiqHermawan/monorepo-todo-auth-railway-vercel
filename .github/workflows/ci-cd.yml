@@ -154,8 +154,8 @@ jobs:
           vercel-args: "--prod"
           working-directory: ./apps/frontend
           scope: ${{ secrets.VERCEL_ORG_ID }}
-          env:
-            VITE_API_URL: ${{ secrets.BACK4APP_BACKEND_URL || secrets.RAILWAY_BACKEND_URL || 'https://your-backend.back4app.io' }}
+        env:
+          VITE_API_URL: ${{ secrets.BACK4APP_BACKEND_URL || secrets.RAILWAY_BACKEND_URL || 'https://your-backend.back4app.io' }}
 
   notify:
     name: Deployment Notification
