@@ -2,9 +2,9 @@ name: CI/CD Pipeline - Railway + Vercel
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   test:
@@ -14,8 +14,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'npm'
+          node-version: "22"
+          cache: "npm"
       - run: npm install -g pnpm
       - run: pnpm install
       - run: pnpm test || true
@@ -47,11 +47,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
       - run: npm install -g @railway/cli
       - name: Deploy to Railway
         run: |
-          railway login --token ${{ secrets.RAILWAY_TOKEN }}
+          railway login 
           railway link ${{ secrets.RAILWAY_PROJECT_ID }}
           cd apps/backend
           railway up
@@ -68,8 +68,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'npm'
+          node-version: "22"
+          cache: "npm"
       - run: npm install -g pnpm
       - run: pnpm install
       - name: Build frontend
@@ -87,13 +87,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
       - uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
+          vercel-args: "--prod"
           working-directory: ./apps/frontend
           scope: ${{ secrets.VERCEL_ORG_ID }}
 
@@ -108,4 +108,3 @@ jobs:
           echo "Backend deployed to Railway"
           echo "Frontend deployed to Vercel"
           echo "Deployment completed"
-
