@@ -41,7 +41,7 @@ jobs:
     name: Deploy Backend to Railway
     needs: build-backend
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && secrets.RAILWAY_TOKEN != ''
+    if: github.ref == 'refs/heads/main'
     environment: production
     steps:
       - uses: actions/checkout@v4
@@ -55,6 +55,10 @@ jobs:
           echo "${{ secrets.RAILWAY_TOKEN }}" > ~/.railway/token.json
       - name: Deploy to Railway
         run: |
+          if [ -z "${{ secrets.RAILWAY_TOKEN }}" ]; then
+            echo "RAILWAY_TOKEN not set, skipping deployment"
+            exit 0
+          fi
           cd apps/backend
           railway link --project ${{ secrets.RAILWAY_PROJECT_ID }} --service ${{ secrets.RAILWAY_SERVICE_ID }}
           railway up --detach
@@ -67,22 +71,30 @@ jobs:
     name: Deploy Backend to Render
     needs: build-backend
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && secrets.RENDER_API_KEY != ''
+    if: github.ref == 'refs/heads/main'
     environment: production
     steps:
       - name: Trigger Render Deploy
         run: |
+          if [ -z "${{ secrets.RENDER_API_KEY }}" ]; then
+            echo "RENDER_API_KEY not set, skipping deployment"
+            exit 0
+          fi
           curl -X POST "https://api.render.com/deploy/srv/${{ secrets.RENDER_SERVICE_ID }}?key=${{ secrets.RENDER_API_KEY }}"
 
   deploy-backend-glitch:
     name: Deploy Backend to Glitch
     needs: build-backend
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && secrets.GLITCH_TOKEN != ''
+    if: github.ref == 'refs/heads/main'
     environment: production
     steps:
       - name: Trigger Glitch Refresh
         run: |
+          if [ -z "${{ secrets.GLITCH_TOKEN }}" ]; then
+            echo "GLITCH_TOKEN not set, skipping deployment"
+            exit 0
+          fi
           curl -X POST "https://api.glitch.com/project/${{ secrets.GLITCH_PROJECT_ID }}/refresh" \
             -H "Authorization: ${{ secrets.GLITCH_TOKEN }}"
 
@@ -90,13 +102,17 @@ jobs:
     name: Deploy Backend to Fly.io
     needs: build-backend
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && secrets.FLY_API_TOKEN != ''
+    if: github.ref == 'refs/heads/main'
     environment: production
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - name: Deploy to Fly.io
         run: |
+          if [ -z "${{ secrets.FLY_API_TOKEN }}" ]; then
+            echo "FLY_API_TOKEN not set, skipping deployment"
+            exit 0
+          fi
           cd apps/backend
           flyctl deploy --remote-only
         env:
@@ -106,12 +122,16 @@ jobs:
     name: Deploy Backend to Back4app
     needs: build-backend
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && secrets.BACK4APP_API_KEY != ''
+    if: github.ref == 'refs/heads/main'
     environment: production
     steps:
       - uses: actions/checkout@v4
       - name: Trigger Back4app Deploy
         run: |
+          if [ -z "${{ secrets.BACK4APP_API_KEY }}" ]; then
+            echo "BACK4APP_API_KEY not set, skipping deployment"
+            exit 0
+          fi
           curl -X POST "https://api.back4app.com/containers/${{ secrets.BACK4APP_CONTAINER_ID }}/deploy" \
             -H "Authorization: Bearer ${{ secrets.BACK4APP_API_KEY }}" \
             -H "Content-Type: application/json" \
