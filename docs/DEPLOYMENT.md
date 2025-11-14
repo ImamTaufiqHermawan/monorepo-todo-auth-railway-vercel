@@ -5,12 +5,14 @@ Panduan lengkap untuk deployment aplikasi Todo ke Railway (Backend) dan Vercel (
 ## Prerequisites
 
 1. **MongoDB Atlas Account**
+
    - Sign up di https://www.mongodb.com/cloud/atlas
    - Create free cluster (M0)
    - Get connection string
    - Whitelist IP addresses (0.0.0.0/0 untuk development)
 
 2. **Railway Account**
+
    - Sign up di https://railway.app
    - Connect GitHub account
    - Get Railway token untuk CI/CD
@@ -26,17 +28,42 @@ Panduan lengkap untuk deployment aplikasi Todo ke Railway (Backend) dan Vercel (
 
 1. Login ke Railway dashboard
 2. Click "New Project"
-3. Select "Deploy from GitHub repo"
-4. Choose repository yang berisi project ini
-5. Railway akan auto-detect Dockerfile
+3. Pilih salah satu:
+   - **Deploy from GitHub repo** (Recommended)
+   - **Empty Project** (jika ingin setup manual)
 
-### Step 2: Configure Service
+### Step 2: Create Backend Service
 
-1. Railway akan create service dari root
-2. Change service settings:
+Jika project masih kosong:
+
+**Cara 1: Add Service dari GitHub**
+
+1. Di project dashboard, click "New" atau "+" button
+2. Select "GitHub Repo"
+3. Pilih repository yang berisi project ini
+4. Railway akan detect dan create service
+5. Jika belum ada service backend, lanjut ke Cara 2
+
+**Cara 2: Add Empty Service**
+
+1. Di project dashboard, click "New" atau "+" button
+2. Select "Empty Service" atau "Dockerfile"
+3. Service baru akan dibuat dengan nama default
+4. Rename service menjadi "backend" (optional)
+
+### Step 3: Configure Service
+
+1. Klik pada service "backend"
+2. Go to "Settings" tab
+3. Configure:
+   - **Name:** backend
+   - **Source:** Connect to GitHub repo (pilih repository)
    - **Root Directory:** `apps/backend`
    - **Build Command:** (auto-detect dari Dockerfile)
    - **Start Command:** `node src/index.js`
+   - **Dockerfile Path:** `apps/backend/Dockerfile` (jika menggunakan Dockerfile)
+
+**Note:** Railway akan auto-detect Dockerfile jika ada di root directory service.
 
 ### Step 3: Add Environment Variables
 
@@ -68,12 +95,29 @@ PORT=3001
 5. Copy token (save untuk GitHub Secrets)
 
 Untuk Project ID:
+
 1. Go to project settings
 2. Copy Project ID
 
 Untuk Service ID:
-1. Go to service settings
-2. Copy Service ID (dari URL atau settings)
+
+1. **Method 1 - Dari Service Settings:**
+
+   - Klik pada service (backend) di Railway dashboard
+   - Klik "Settings" tab
+   - Scroll ke bawah, Service ID akan terlihat di bagian bawah halaman
+
+2. **Method 2 - Dari URL:**
+
+   - Klik pada service (backend) di Railway dashboard
+   - Lihat URL di browser: `https://railway.app/project/<project-id>/service/<service-id>`
+   - Copy Service ID dari URL (bagian setelah `/service/`)
+
+3. **Method 3 - Menggunakan Railway CLI:**
+   ```bash
+   railway service
+   # Akan menampilkan list services dengan IDs
+   ```
 
 ## Frontend Deployment - Vercel
 
@@ -114,6 +158,7 @@ VITE_API_URL=https://your-backend.railway.app
 4. Copy token (save untuk GitHub Secrets)
 
 Untuk Org ID dan Project ID:
+
 1. Go to project settings
 2. Copy Organization ID dan Project ID
 
@@ -124,21 +169,25 @@ Untuk Org ID dan Project ID:
 Add secrets berikut di GitHub repository (Settings > Secrets and variables > Actions):
 
 **Railway:**
+
 - `RAILWAY_TOKEN`: Railway authentication token
 - `RAILWAY_PROJECT_ID`: Railway project ID
 - `RAILWAY_SERVICE_ID`: Railway service ID
 
 **Vercel:**
+
 - `VERCEL_TOKEN`: Vercel authentication token
 - `VERCEL_ORG_ID`: Vercel organization ID
 - `VERCEL_PROJECT_ID`: Vercel project ID
 
 **Backend URL (optional):**
+
 - `RAILWAY_BACKEND_URL`: Railway backend URL (untuk frontend build)
 
 ### Workflow
 
 CI/CD workflow akan:
+
 1. Run tests pada setiap push
 2. Build backend Docker image
 3. Deploy backend ke Railway (main branch only)
@@ -198,6 +247,7 @@ vercel --prod
 ### Railway
 
 Railway menyediakan environment variables management di dashboard:
+
 - Go to service settings
 - Add/edit variables
 - Variables akan di-inject ke container
@@ -206,6 +256,7 @@ Railway menyediakan environment variables management di dashboard:
 ### Vercel
 
 Vercel environment variables:
+
 - Go to project settings
 - Add/edit variables per environment (Production, Preview, Development)
 - Variables akan di-inject saat build time
@@ -232,16 +283,19 @@ Vercel environment variables:
 ### Backend Issues
 
 **Port Issues:**
+
 - Railway sets PORT automatically
 - Ensure app listens on `process.env.PORT || 3001`
 - Check Railway logs untuk port conflicts
 
 **Database Connection:**
+
 - Verify MONGODB_URI is correct
 - Check MongoDB Atlas IP whitelist
 - Ensure network access is allowed
 
 **Build Failures:**
+
 - Check Dockerfile syntax
 - Verify all dependencies in package.json
 - Check Railway build logs
@@ -249,16 +303,19 @@ Vercel environment variables:
 ### Frontend Issues
 
 **Build Failures:**
+
 - Check Vite configuration
 - Verify environment variables
 - Check Vercel build logs
 
 **API Connection:**
+
 - Verify VITE_API_URL is correct
 - Check CORS settings di backend
 - Ensure backend is accessible
 
 **Routing Issues:**
+
 - Verify vercel.json rewrites configuration
 - Check React Router setup
 - Ensure SPA routing is configured
@@ -266,18 +323,21 @@ Vercel environment variables:
 ## Free Tier Limits
 
 ### Railway
+
 - $5 credit per month
 - 500 hours compute time
 - Sufficient untuk small applications
 - Auto-sleep after inactivity (wake on request)
 
 ### Vercel
+
 - Unlimited deployments
 - 100GB bandwidth per month
 - Perfect untuk frontend
 - Global CDN included
 
 ### MongoDB Atlas
+
 - 512MB storage
 - Shared cluster
 - Sufficient untuk development dan small production
@@ -285,11 +345,13 @@ Vercel environment variables:
 ## Cost Optimization
 
 1. **Railway:**
+
    - Use sleep on inactivity (free tier)
    - Monitor resource usage
    - Optimize Docker image size
 
 2. **Vercel:**
+
    - Use edge caching
    - Optimize bundle size
    - Use static generation where possible
@@ -306,4 +368,3 @@ Vercel environment variables:
 3. Setup backup strategies
 4. Implement CI/CD best practices
 5. Optimize performance
-
