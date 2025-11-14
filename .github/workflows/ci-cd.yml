@@ -52,7 +52,7 @@ jobs:
       - name: Deploy to Railway
         run: |
           cd apps/backend
-          railway link ${{ secrets.RAILWAY_PROJECT_ID }} --non-interactive
+          railway link --project ${{ secrets.RAILWAY_PROJECT_ID }}
           railway up --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}

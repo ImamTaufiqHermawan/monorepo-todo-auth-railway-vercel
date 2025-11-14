@@ -5,6 +5,7 @@ Panduan detail untuk setup backend di Railway.
 ## Railway Overview
 
 Railway adalah platform yang memudahkan deployment aplikasi dengan:
+
 - Docker support
 - Auto-deployment dari GitHub
 - Environment variables management
@@ -50,6 +51,7 @@ PORT=3001
 ```
 
 **Security Notes:**
+
 - JWT_SECRET harus strong (min 32 characters)
 - Jangan commit secrets ke repository
 - Use Railway secrets management
@@ -104,6 +106,7 @@ railway open
 Railway akan menggunakan Dockerfile di `apps/backend/Dockerfile`.
 
 Ensure Dockerfile:
+
 - Exposes correct port
 - Uses PORT environment variable
 - Has health check
@@ -126,12 +129,14 @@ Ensure Dockerfile:
 ### Setting Variables
 
 **Via Dashboard:**
+
 1. Go to service settings
 2. Click "Variables"
 3. Add/edit variables
 4. Save (triggers redeploy)
 
 **Via CLI:**
+
 ```bash
 railway variables set MONGODB_URI="your-connection-string"
 railway variables set JWT_SECRET="your-secret"
@@ -142,6 +147,7 @@ railway variables set JWT_SECRET="your-secret"
 ### Logs
 
 View logs di Railway dashboard:
+
 - Real-time logs
 - Filter by level
 - Search functionality
@@ -150,6 +156,7 @@ View logs di Railway dashboard:
 ### Metrics
 
 Railway provides:
+
 - CPU usage
 - Memory usage
 - Network traffic
@@ -158,6 +165,7 @@ Railway provides:
 ### Alerts
 
 Setup alerts untuk:
+
 - High resource usage
 - Deployment failures
 - Service downtime
@@ -169,6 +177,7 @@ Setup alerts untuk:
 Railway dapat di-deploy via GitHub Actions menggunakan Railway CLI.
 
 **Setup GitHub Secrets:**
+
 1. Go to Railway dashboard
 2. Click on your profile > Tokens
 3. Create new token
@@ -176,15 +185,17 @@ Railway dapat di-deploy via GitHub Actions menggunakan Railway CLI.
 5. Get Project ID dari project settings
 
 **Add GitHub Secrets:**
+
 - `RAILWAY_TOKEN`: Railway authentication token
 - `RAILWAY_PROJECT_ID`: Railway project ID
 
 **Using Railway CLI in Actions:**
+
 ```yaml
 - run: npm install -g @railway/cli
 - run: |
     cd apps/backend
-    railway link ${{ secrets.RAILWAY_PROJECT_ID }} --non-interactive
+    railway link --project ${{ secrets.RAILWAY_PROJECT_ID }}
     railway up --detach
   env:
     RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
@@ -192,14 +203,17 @@ Railway dapat di-deploy via GitHub Actions menggunakan Railway CLI.
 ```
 
 **Important Notes:**
+
 - Railway CLI akan otomatis menggunakan `RAILWAY_TOKEN` environment variable
 - Tidak perlu `railway login` di CI/CD (non-interactive mode)
-- Gunakan `--non-interactive` flag untuk `railway link`
+- Gunakan `--project` flag untuk `railway link` dengan project ID
 - Gunakan `--detach` flag untuk `railway up` agar tidak blocking
+- Pastikan `RAILWAY_PROJECT_ID` adalah valid project ID dari Railway dashboard
 
 ### Auto-Deploy
 
 Railway supports auto-deploy:
+
 - Enable di service settings
 - Deploys on push to main branch
 - Can configure branch untuk auto-deploy
@@ -254,21 +268,25 @@ Railway supports auto-deploy:
 ## Best Practices
 
 1. **Use Environment Variables:**
+
    - Never hardcode secrets
    - Use Railway secrets management
    - Separate dev/prod variables
 
 2. **Optimize Docker Image:**
+
    - Use multi-stage builds
    - Minimize image size
    - Use .dockerignore
 
 3. **Monitor Resources:**
+
    - Check metrics regularly
    - Setup alerts
    - Optimize when needed
 
 4. **Logging:**
+
    - Use structured logging
    - Log important events
    - Monitor error logs
@@ -278,4 +296,3 @@ Railway supports auto-deploy:
    - Enable HTTPS
    - Regular updates
    - Security scanning
-
