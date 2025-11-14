@@ -183,32 +183,40 @@ Railway dapat di-deploy via GitHub Actions menggunakan Railway CLI.
 3. Create new token
 4. Copy token (save untuk GitHub Secrets)
 5. Get Project ID dari project settings
+6. Get Service ID dari service settings
 
 **Add GitHub Secrets:**
 
 - `RAILWAY_TOKEN`: Railway authentication token
 - `RAILWAY_PROJECT_ID`: Railway project ID
+- `RAILWAY_SERVICE_ID`: Railway service ID (dari service settings)
 
 **Using Railway CLI in Actions:**
 
 ```yaml
-- run: npm install -g @railway/cli
-- run: |
+- run: npm install -g @railway/cli@latest
+- name: Setup Railway authentication
+  run: |
+    mkdir -p ~/.railway
+    echo "${{ secrets.RAILWAY_TOKEN }}" > ~/.railway/token.json
+- name: Deploy to Railway
+  run: |
     cd apps/backend
-    railway link --project ${{ secrets.RAILWAY_PROJECT_ID }}
+    railway link --project ${{ secrets.RAILWAY_PROJECT_ID }} --service ${{ secrets.RAILWAY_SERVICE_ID }}
     railway up --detach
   env:
     RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
     RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+    RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
 ```
 
 **Important Notes:**
 
-- Railway CLI akan otomatis menggunakan `RAILWAY_TOKEN` environment variable
-- Tidak perlu `railway login` di CI/CD (non-interactive mode)
+- Setup Railway token di `~/.railway/token.json` untuk authentication
 - Gunakan `--project` flag untuk `railway link` dengan project ID
+- Gunakan `--service` flag untuk `railway link` dengan service ID
 - Gunakan `--detach` flag untuk `railway up` agar tidak blocking
-- Pastikan `RAILWAY_PROJECT_ID` adalah valid project ID dari Railway dashboard
+- Pastikan semua IDs (project, service) adalah valid dari Railway dashboard
 
 ### Auto-Deploy
 

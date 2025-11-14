@@ -71,6 +71,10 @@ Untuk Project ID:
 1. Go to project settings
 2. Copy Project ID
 
+Untuk Service ID:
+1. Go to service settings
+2. Copy Service ID (dari URL atau settings)
+
 ## Frontend Deployment - Vercel
 
 ### Step 1: Setup Vercel Project
@@ -122,6 +126,7 @@ Add secrets berikut di GitHub repository (Settings > Secrets and variables > Act
 **Railway:**
 - `RAILWAY_TOKEN`: Railway authentication token
 - `RAILWAY_PROJECT_ID`: Railway project ID
+- `RAILWAY_SERVICE_ID`: Railway service ID
 
 **Vercel:**
 - `VERCEL_TOKEN`: Vercel authentication token
