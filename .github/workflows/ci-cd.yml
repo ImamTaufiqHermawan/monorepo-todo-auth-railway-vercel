@@ -1,4 +1,4 @@
-name: CI/CD Pipeline - Railway + Vercel
+name: CI/CD Pipeline - Back4app + Vercel
 
 on:
   push:
@@ -55,6 +55,10 @@ jobs:
           echo "${{ secrets.RAILWAY_TOKEN }}" > ~/.railway/token.json
       - name: Deploy to Railway
         run: |
+          if [ -z "${{ secrets.RAILWAY_TOKEN }}" ]; then
+            echo "RAILWAY_TOKEN not set, skipping deployment"
+            exit 0
+          fi
           cd apps/backend
           railway link --project ${{ secrets.RAILWAY_PROJECT_ID }} --service ${{ secrets.RAILWAY_SERVICE_ID }}
           railway up --detach
@@ -62,6 +66,76 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
           RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+
+  deploy-backend-render:
+    name: Deploy Backend to Render
+    needs: build-backend
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - name: Trigger Render Deploy
+        run: |
+          if [ -z "${{ secrets.RENDER_API_KEY }}" ]; then
+            echo "RENDER_API_KEY not set, skipping deployment"
+            exit 0
+          fi
+          curl -X POST "https://api.render.com/deploy/srv/${{ secrets.RENDER_SERVICE_ID }}?key=${{ secrets.RENDER_API_KEY }}"
+
+  deploy-backend-glitch:
+    name: Deploy Backend to Glitch
+    needs: build-backend
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - name: Trigger Glitch Refresh
+        run: |
+          if [ -z "${{ secrets.GLITCH_TOKEN }}" ]; then
+            echo "GLITCH_TOKEN not set, skipping deployment"
+            exit 0
+          fi
+          curl -X POST "https://api.glitch.com/project/${{ secrets.GLITCH_PROJECT_ID }}/refresh" \
+            -H "Authorization: ${{ secrets.GLITCH_TOKEN }}"
+
+  deploy-backend-fly:
+    name: Deploy Backend to Fly.io
+    needs: build-backend
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Deploy to Fly.io
+        run: |
+          if [ -z "${{ secrets.FLY_API_TOKEN }}" ]; then
+            echo "FLY_API_TOKEN not set, skipping deployment"
+            exit 0
+          fi
+          cd apps/backend
+          flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  deploy-backend-back4app:
+    name: Deploy Backend to Back4app
+    needs: build-backend
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trigger Back4app Deploy
+        run: |
+          if [ -z "${{ secrets.BACK4APP_API_KEY }}" ]; then
+            echo "BACK4APP_API_KEY not set, skipping deployment"
+            exit 0
+          fi
+          curl -X POST "https://api.back4app.com/containers/${{ secrets.BACK4APP_CONTAINER_ID }}/deploy" \
+            -H "Authorization: Bearer ${{ secrets.BACK4APP_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"branch": "main", "rootDirectory": "apps/backend"}'
 
   build-frontend:
     name: Build Frontend
@@ -79,11 +153,11 @@ jobs:
       - name: Build frontend
         run: pnpm --filter frontend build
         env:
-          VITE_API_URL: ${{ secrets.RAILWAY_BACKEND_URL || 'https://your-backend.railway.app' }}
+          VITE_API_URL: ${{ secrets.BACK4APP_BACKEND_URL || secrets.RAILWAY_BACKEND_URL || 'https://your-backend.back4app.io' }}
 
   deploy-frontend-vercel:
     name: Deploy Frontend to Vercel
-    needs: [build-frontend, deploy-backend-railway]
+    needs: [build-frontend, deploy-backend-back4app]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     environment: production
@@ -100,15 +174,17 @@ jobs:
           vercel-args: "--prod"
           working-directory: ./apps/frontend
           scope: ${{ secrets.VERCEL_ORG_ID }}
+        env:
+          VITE_API_URL: ${{ secrets.BACK4APP_BACKEND_URL || secrets.RAILWAY_BACKEND_URL || 'https://your-backend.back4app.io' }}
 
   notify:
     name: Deployment Notification
-    needs: [deploy-backend-railway, deploy-frontend-vercel]
+    needs: [deploy-backend-back4app, deploy-frontend-vercel]
     runs-on: ubuntu-latest
     if: always() && github.ref == 'refs/heads/main'
     steps:
       - name: Deployment Status
         run: |
-          echo "Backend deployed to Railway"
+          echo "Backend deployed to Back4app"
           echo "Frontend deployed to Vercel"
           echo "Deployment completed"

@@ -23,20 +23,60 @@ Railway adalah platform yang memudahkan deployment aplikasi dengan:
 ### 2. Create New Project
 
 1. Click "New Project"
-2. Select "Deploy from GitHub repo"
-3. Authorize Railway untuk access GitHub
-4. Select repository
-5. Railway akan auto-detect services
+2. Pilih salah satu opsi:
+   - **Option A: Deploy from GitHub repo** (Recommended)
+     - Select "Deploy from GitHub repo"
+     - Authorize Railway untuk access GitHub
+     - Select repository
+     - Railway akan auto-detect dan create service
+   - **Option B: Empty Project**
+     - Select "Empty Project"
+     - Project kosong akan dibuat
+     - Lanjut ke Step 3 untuk create service manual
 
-### 3. Configure Backend Service
+### 3. Create Backend Service
 
-1. Railway akan create service dari repository
-2. Go to service settings
-3. Configure:
+Jika project masih kosong atau belum ada service backend:
+
+**Method 1: Add Service dari GitHub (Recommended)**
+
+1. Di project dashboard, click "New" atau "+"
+2. Select "GitHub Repo"
+3. Pilih repository yang berisi project ini
+4. Railway akan detect services
+5. Pilih atau create service untuk backend
+
+**Method 2: Add Service dengan Dockerfile**
+
+1. Di project dashboard, click "New" atau "+"
+2. Select "Empty Service" atau "Dockerfile"
+3. Service baru akan dibuat
+4. Go to service settings
+5. Configure:
    - **Name:** backend (atau todo-backend)
+   - **Source:** Connect to GitHub repo (pilih repository)
    - **Root Directory:** `apps/backend`
    - **Build Command:** (auto dari Dockerfile)
    - **Start Command:** `node src/index.js`
+
+**Method 3: Deploy dari Local dengan Railway CLI**
+
+1. Install Railway CLI: `npm install -g @railway/cli`
+2. Login: `railway login`
+3. Di project directory: `railway link`
+4. Deploy: `railway up`
+
+### 4. Configure Backend Service
+
+Setelah service dibuat, configure settings:
+
+1. Go to service settings
+2. Configure:
+   - **Name:** backend (atau todo-backend)
+   - **Root Directory:** `apps/backend` (jika menggunakan GitHub repo)
+   - **Build Command:** (auto dari Dockerfile jika ada)
+   - **Start Command:** `node src/index.js`
+   - **Dockerfile Path:** `apps/backend/Dockerfile` (jika menggunakan Dockerfile)
 
 ### 4. Environment Variables
 
@@ -56,7 +96,30 @@ PORT=3001
 - Jangan commit secrets ke repository
 - Use Railway secrets management
 
-### 5. Deploy
+### 5. Get Service ID
+
+Service ID diperlukan untuk CI/CD deployment. Cara mendapatkan:
+
+**Method 1: Dari Service Settings**
+
+1. Klik pada service (backend) di Railway dashboard
+2. Klik "Settings" tab
+3. Scroll ke bawah, Service ID akan terlihat di bagian bawah halaman
+
+**Method 2: Dari URL**
+
+1. Klik pada service (backend) di Railway dashboard
+2. Lihat URL di browser, format: `https://railway.app/project/<project-id>/service/<service-id>`
+3. Copy Service ID dari URL (bagian setelah `/service/`)
+
+**Method 3: Menggunakan Railway CLI**
+
+```bash
+railway service
+# Akan menampilkan list services dengan IDs
+```
+
+### 6. Deploy
 
 1. Railway akan auto-deploy dari main branch
 2. Monitor deployment di dashboard

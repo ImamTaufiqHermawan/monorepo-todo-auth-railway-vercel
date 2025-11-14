@@ -1,5 +1,5 @@
 {
-  "name": "monorepo-todo-auth-railway-vercel",
+  "name": "monorepo-todo-auth-railway-vercel-imam",
   "version": "1.0.0",
   "description": "Fullstack Todo application with authentication - Railway + Vercel",
   "private": true,
@@ -26,4 +26,3 @@
   },
   "packageManager": "pnpm@9.0.0"
 }
-
