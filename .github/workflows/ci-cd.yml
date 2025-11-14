@@ -51,10 +51,9 @@ jobs:
       - run: npm install -g @railway/cli
       - name: Deploy to Railway
         run: |
-          railway login 
-          railway link ${{ secrets.RAILWAY_PROJECT_ID }}
           cd apps/backend
-          railway up
+          railway link ${{ secrets.RAILWAY_PROJECT_ID }} --non-interactive
+          railway up --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}

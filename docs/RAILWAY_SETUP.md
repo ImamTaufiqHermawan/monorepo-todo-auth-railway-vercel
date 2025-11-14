@@ -166,15 +166,36 @@ Setup alerts untuk:
 
 ### GitHub Actions
 
-Railway dapat di-deploy via GitHub Actions menggunakan Railway CLI atau API.
+Railway dapat di-deploy via GitHub Actions menggunakan Railway CLI.
+
+**Setup GitHub Secrets:**
+1. Go to Railway dashboard
+2. Click on your profile > Tokens
+3. Create new token
+4. Copy token (save untuk GitHub Secrets)
+5. Get Project ID dari project settings
+
+**Add GitHub Secrets:**
+- `RAILWAY_TOKEN`: Railway authentication token
+- `RAILWAY_PROJECT_ID`: Railway project ID
 
 **Using Railway CLI in Actions:**
 ```yaml
 - run: npm install -g @railway/cli
-- run: railway login --token ${{ secrets.RAILWAY_TOKEN }}
-- run: railway link ${{ secrets.RAILWAY_PROJECT_ID }}
-- run: railway up
+- run: |
+    cd apps/backend
+    railway link ${{ secrets.RAILWAY_PROJECT_ID }} --non-interactive
+    railway up --detach
+  env:
+    RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+    RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
 ```
+
+**Important Notes:**
+- Railway CLI akan otomatis menggunakan `RAILWAY_TOKEN` environment variable
+- Tidak perlu `railway login` di CI/CD (non-interactive mode)
+- Gunakan `--non-interactive` flag untuk `railway link`
+- Gunakan `--detach` flag untuk `railway up` agar tidak blocking
 
 ### Auto-Deploy
 
@@ -182,6 +203,7 @@ Railway supports auto-deploy:
 - Enable di service settings
 - Deploys on push to main branch
 - Can configure branch untuk auto-deploy
+- Alternative: Use GitHub Actions untuk more control
 
 ## Custom Domain
 
