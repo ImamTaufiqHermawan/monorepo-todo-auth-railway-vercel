@@ -73,10 +73,8 @@ monorepo-todo-auth-railway-vercel/
 - Docker & Docker Compose (untuk local development)
 - MongoDB Atlas account (Free Tier)
 - Backend hosting account (Free Tier):
-  - **Netlify** (Built-in CI/CD, Fullstack - no credit card) ⭐ - [docs/NETLIFY_BACKEND_SETUP.md](docs/NETLIFY_BACKEND_SETUP.md)
-  - **Back4app** (Docker support, CI/CD - no credit card) ⭐ - [docs/BACK4APP_SETUP.md](docs/BACK4APP_SETUP.md)
-  - **Cyclic.sh** (No sleep, CI/CD - no credit card) - [docs/FREE_BACKEND_ALTERNATIVES.md](docs/FREE_BACKEND_ALTERNATIVES.md)
-  - **Genezio** (1GB RAM, no sleep, CI/CD - no credit card) - [docs/FREE_BACKEND_ALTERNATIVES.md](docs/FREE_BACKEND_ALTERNATIVES.md)
+  - **Back4app** (Docker support, CI/CD - no credit card) ⭐ Recommended - [docs/BACK4APP_SETUP.md](docs/BACK4APP_SETUP.md)
+  - **Netlify** (Built-in CI/CD, Fullstack - no credit card) - [docs/NETLIFY_BACKEND_SETUP.md](docs/NETLIFY_BACKEND_SETUP.md)
   - **Replit** (Online IDE, Limited CI/CD - no credit card) - [docs/REPLIT_SETUP.md](docs/REPLIT_SETUP.md)
   - **Render** (Perlu credit card untuk verifikasi) - [docs/RENDER_SETUP.md](docs/RENDER_SETUP.md)
   - **Railway** (Perlu credit card, limited) - [docs/RAILWAY_SETUP.md](docs/RAILWAY_SETUP.md)
@@ -201,29 +199,9 @@ Services akan berjalan di:
 
 **Lihat dokumentasi lengkap:** [docs/NETLIFY_BACKEND_SETUP.md](docs/NETLIFY_BACKEND_SETUP.md)
 
-#### Option 2: Cyclic.sh (No Credit Card - No Sleep, CI/CD)
+#### Option 2: Genezio (Perlu Credit Card - 1GB RAM, No Sleep, CI/CD)
 
-**Cyclic.sh** adalah platform serverless yang **tidak memerlukan credit card** dan aplikasi **tidak akan sleep**.
-
-**Keuntungan Cyclic:**
-
-- ✅ **100% Free** tanpa credit card
-- ✅ **No sleep** - aplikasi selalu aktif
-- ✅ **Unlimited** deployments
-- ✅ **Auto-deploy** dari GitHub
-- ✅ **Perfect** untuk Express apps
-
-**Setup:**
-
-1. Sign up di cyclic.sh dengan GitHub
-2. Connect repository
-3. Set root directory: `apps/backend`
-4. Add environment variables
-5. Auto-deploy
-
-**Lihat dokumentasi:** [docs/FREE_BACKEND_ALTERNATIVES.md](docs/FREE_BACKEND_ALTERNATIVES.md)
-
-#### Option 3: Genezio (No Credit Card - 1GB RAM, No Sleep, CI/CD)
+**Note:** Genezio sekarang memerlukan credit card untuk verifikasi.
 
 **Genezio** adalah platform serverless dengan **1GB RAM** dan **tidak akan sleep**.
 
@@ -243,7 +221,7 @@ Services akan berjalan di:
 
 **Lihat dokumentasi:** [docs/FREE_BACKEND_ALTERNATIVES.md](docs/FREE_BACKEND_ALTERNATIVES.md)
 
-#### Option 4: Replit (No Credit Card, Online IDE, Limited CI/CD)
+#### Option 3: Replit (No Credit Card, Online IDE, Limited CI/CD)
 
 **Replit** adalah platform free hosting dengan **online IDE** yang **tidak memerlukan credit card**.
 
@@ -271,7 +249,7 @@ Services akan berjalan di:
 
 **Lihat dokumentasi lengkap:** [docs/REPLIT_SETUP.md](docs/REPLIT_SETUP.md)
 
-#### Option 5: Back4app Containers (No Credit Card - Docker Support, CI/CD)
+#### Option 4: Back4app Containers (No Credit Card - Docker Support, CI/CD) ⭐ Recommended
 
 **Back4app Containers** adalah platform container hosting dengan **Docker support** dan **CI/CD** yang **tidak memerlukan credit card**.
 
@@ -295,12 +273,21 @@ Services akan berjalan di:
 3. Connect GitHub repository
 4. Set root directory: `apps/backend`
 5. Configure build settings
-6. Add environment variables
+6. **⚠️ CRITICAL: Add environment variables BEFORE deployment:**
+   - `MONGODB_URI` - MongoDB Atlas connection string (REQUIRED)
+   - `JWT_SECRET` - JWT secret key (REQUIRED)
+   - `JWT_EXPIRES_IN=7d` (optional)
+   - `NODE_ENV=production` (optional)
+   - `PORT=3001` (optional)
 7. Deploy
 
-**Lihat dokumentasi lengkap:** [docs/BACK4APP_SETUP.md](docs/BACK4APP_SETUP.md)
+**⚠️ IMPORTANT:** Jika environment variables tidak di-set, aplikasi akan crash saat startup karena MongoDB connection gagal. Check logs di Back4app dashboard untuk error details.
 
-#### Option 6: Fly.io (Perlu Credit Card - Docker Support)
+**Lihat dokumentasi lengkap:** 
+- [docs/BACK4APP_SETUP.md](docs/BACK4APP_SETUP.md) - Setup guide
+- [docs/BACK4APP_TROUBLESHOOTING.md](docs/BACK4APP_TROUBLESHOOTING.md) - Troubleshooting guide
+
+#### Option 5: Fly.io (Perlu Credit Card - Docker Support)
 
 **Note:** Fly.io sekarang memerlukan credit card untuk verifikasi.
 
@@ -401,20 +388,12 @@ GitHub Actions workflow akan:
 - **No credit card required**
 - Perfect untuk learning dan development
 
-### Cyclic.sh (No Credit Card - Recommended untuk Production)
-
-- **Unlimited** deployments
-- **512MB RAM**
-- **No sleep** - aplikasi selalu aktif
-- **No credit card required**
-- Perfect untuk production apps
-
-### Genezio (No Credit Card - Most RAM)
+### Genezio (Perlu Credit Card - Most RAM)
 
 - **1GB RAM** (paling besar)
 - **No sleep** - aplikasi selalu aktif
 - **Unlimited** deployments
-- **No credit card required**
+- **Credit card required** untuk verifikasi
 - Perfect untuk apps yang butuh lebih banyak RAM
 
 ### Fly.io (Perlu Credit Card)
@@ -458,14 +437,14 @@ GitHub Actions workflow akan:
 
 **Best Combination (No Credit Card):**
 
-- **Fullstack:**
-  - **Netlify** (Frontend + Backend, built-in CI/CD) ⭐ Recommended untuk CI/CD
-- **Backend Only:**
-  - **Back4app** (Docker support, CI/CD) ⭐ Recommended untuk Docker apps
-  - **Cyclic.sh** (no sleep, CI/CD support)
-  - **Genezio** (1GB RAM, no sleep, CI/CD support)
+- **Backend:**
+  - **Back4app** (Docker support, CI/CD) ⭐ Recommended untuk production
+- **Frontend:**
+  - **Vercel** (unlimited, perfect untuk React) ⭐ Recommended
+- **Fullstack Alternative:**
+  - **Netlify** (Frontend + Backend, built-in CI/CD, perlu restructure ke serverless)
+- **Learning:**
   - **Replit** (online IDE, tapi limited CI/CD)
-- **Frontend:** Vercel (jika tidak pakai Netlify)
 - **Database:** MongoDB Atlas (512MB free, no credit card)
 
 **Alternatif dengan Credit Card:**

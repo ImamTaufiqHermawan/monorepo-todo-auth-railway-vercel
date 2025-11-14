@@ -126,16 +126,39 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4
-      - name: Trigger Back4app Deploy
+      - name: Deploy to Back4app via GitHub Integration
         run: |
-          if [ -z "${{ secrets.BACK4APP_API_KEY }}" ]; then
-            echo "BACK4APP_API_KEY not set, skipping deployment"
-            exit 0
+          echo "🚀 Back4app Auto-Deploy via GitHub Integration"
+          echo "Repository: ${{ github.repository }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+          echo ""
+          echo "✅ Back4app will automatically deploy when GitHub integration is enabled"
+          echo "📝 To enable: Go to Back4app Container Settings > GitHub Integration"
+          echo "   - Connect repository: ${{ github.repository }}"
+          echo "   - Set branch: main"
+          echo "   - Set root directory: apps/backend"
+          echo "   - Enable Auto Deploy"
+          echo ""
+          echo "💡 Alternative: If you have Back4app API credentials, you can use API method"
+          if [ -n "${{ secrets.BACK4APP_REST_API_KEY }}" ] && [ -n "${{ secrets.BACK4APP_APP_ID }}" ]; then
+            echo "📡 Attempting API deployment..."
+            curl -X POST "https://api.back4app.com/v1/deploy" \
+              -H "X-Parse-Application-Id: ${{ secrets.BACK4APP_APP_ID }}" \
+              -H "X-Parse-REST-API-Key: ${{ secrets.BACK4APP_REST_API_KEY }}" \
+              -H "Content-Type: application/json" \
+              -d "{
+                \"sourceControl\": {
+                  \"provider\": \"github\",
+                  \"owner\": \"${{ github.repository_owner }}\",
+                  \"repo\": \"${{ github.event.repository.name }}\",
+                  \"branch\": \"main\",
+                  \"rootDirectory\": \"apps/backend\"
+                }
+              }" || echo "⚠️ API deployment failed, using GitHub integration instead"
+          else
+            echo "ℹ️ API credentials not set, using GitHub integration method"
           fi
-          curl -X POST "https://api.back4app.com/containers/${{ secrets.BACK4APP_CONTAINER_ID }}/deploy" \
-            -H "Authorization: Bearer ${{ secrets.BACK4APP_API_KEY }}" \
-            -H "Content-Type: application/json" \
-            -d '{"branch": "main", "rootDirectory": "apps/backend"}'
 
   build-frontend:
     name: Build Frontend

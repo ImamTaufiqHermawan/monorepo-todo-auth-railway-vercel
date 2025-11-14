@@ -4,17 +4,18 @@ Dokumentasi alternatif platform hosting backend Node.js/Express yang benar-benar
 
 ## Platform Comparison
 
-| Platform      | Free Tier  | CC Required | Docker | Auto-Deploy | CI/CD       | Best For       |
-| ------------- | ---------- | ----------- | ------ | ----------- | ----------- | -------------- |
-| **Netlify**   | 100GB      | ❌ No       | ❌ No  | ✅ Yes      | ✅ Built-in | Fullstack      |
-| **Cyclic.sh** | Unlimited  | ❌ No       | ❌ No  | ✅ Yes      | ✅ Yes      | Serverless     |
-| **Genezio**   | 1GB RAM    | ❌ No       | ❌ No  | ✅ Yes      | ✅ Yes      | Serverless     |
-| **Replit**    | Starter    | ❌ No       | ❌ No  | ✅ Yes      | ❌ Limited  | Learning/Dev   |
-| **Back4app**  | 256MB RAM  | ❌ No       | ✅ Yes | ✅ Yes      | ✅ Yes      | Container apps |
-| **Koyeb**     | 2 Services | ✅ Yes      | ✅ Yes | ✅ Yes      | ✅ Yes      | Docker apps    |
-| **Fly.io**    | 3 VMs      | ✅ Yes      | ✅ Yes | ✅ Yes      | ✅ Yes      | Container apps |
-| **Render**    | 750 hrs    | ✅ Yes      | ✅ Yes | ✅ Yes      | ✅ Yes      | Full apps      |
-| **Railway**   | $5 credit  | ✅ Yes      | ✅ Yes | ✅ Yes      | ✅ Yes      | Full apps      |
+| Platform     | Free Tier  | CC Required | Docker | Auto-Deploy | CI/CD       | Best For       |
+| ------------ | ---------- | ----------- | ------ | ----------- | ----------- | -------------- |
+| **Back4app** | 256MB RAM  | ❌ No       | ✅ Yes | ✅ Yes      | ✅ Yes      | Container apps |
+| **Netlify**  | 100GB      | ❌ No       | ❌ No  | ✅ Yes      | ✅ Built-in | Fullstack      |
+| **Replit**   | Starter    | ❌ No       | ❌ No  | ✅ Yes      | ❌ Limited  | Learning/Dev   |
+| **Genezio**  | 1GB RAM    | ✅ Yes      | ❌ No  | ✅ Yes      | ✅ Yes      | Serverless     |
+| **Koyeb**    | 2 Services | ✅ Yes      | ✅ Yes | ✅ Yes      | ✅ Yes      | Docker apps    |
+| **Fly.io**   | 3 VMs      | ✅ Yes      | ✅ Yes | ✅ Yes      | ✅ Yes      | Container apps |
+| **Render**   | 750 hrs    | ✅ Yes      | ✅ Yes | ✅ Yes      | ✅ Yes      | Full apps      |
+| **Railway**  | $5 credit  | ✅ Yes      | ✅ Yes | ✅ Yes      | ✅ Yes      | Full apps      |
+
+**Note:** Cyclic.sh sudah shutdown. Genezio sekarang memerlukan credit card.
 
 ## Option 1: Netlify (Recommended - No CC, Built-in CI/CD, Fullstack)
 
@@ -54,48 +55,9 @@ Netlify perlu Express app di-restructure menjadi serverless functions menggunaka
 
 **Lihat dokumentasi lengkap:** [NETLIFY_BACKEND_SETUP.md](./NETLIFY_BACKEND_SETUP.md)
 
-## Option 2: Cyclic.sh (No CC - No Sleep, CI/CD)
+## Option 2: Genezio (Perlu CC - 1GB RAM, No Sleep, CI/CD)
 
-### Keuntungan
-
-- **100% Free** tanpa credit card
-- **No sleep** - aplikasi tidak akan sleep
-- **Unlimited** deployments
-- **CI/CD Support** - Auto-deploy dari GitHub
-- **Perfect** untuk Express apps
-
-### Keterbatasan
-
-- **No Docker** (serverless only)
-- **Function-based** architecture
-- **Cold starts** mungkin terjadi
-
-### Setup Cyclic
-
-#### Step 1: Create Account
-
-1. Go to https://cyclic.sh
-2. Sign up dengan GitHub
-3. No credit card required
-
-#### Step 2: Deploy
-
-1. Connect GitHub repository
-2. Cyclic auto-detects Node.js
-3. Set root directory: `apps/backend`
-4. Auto-deploy
-
-#### Step 3: Environment Variables
-
-Add di Cyclic dashboard:
-
-```
-MONGODB_URI=...
-JWT_SECRET=...
-NODE_ENV=production
-```
-
-## Option 3: Genezio (No CC - 1GB RAM, No Sleep, CI/CD)
+**Note:** Genezio sekarang memerlukan credit card untuk verifikasi.
 
 ### Keuntungan
 
@@ -125,7 +87,7 @@ NODE_ENV=production
 3. Set root directory: `apps/backend`
 4. Auto-deploy
 
-## Option 4: Replit (No CC, Online IDE, Limited CI/CD)
+## Option 3: Replit (No CC, Online IDE, Limited CI/CD)
 
 ### Keuntungan
 
@@ -187,7 +149,7 @@ NODE_ENV=production
 
 **Lihat dokumentasi lengkap:** [REPLIT_SETUP.md](./REPLIT_SETUP.md)
 
-## Option 5: Back4app Containers (No CC - Docker Support, CI/CD)
+## Option 4: Back4app Containers (No CC - Docker Support, CI/CD) ⭐ Recommended
 
 **Back4app Containers** adalah platform container hosting dengan **Docker support** dan **CI/CD** yang **tidak memerlukan credit card**.
 
@@ -370,7 +332,7 @@ NODE_ENV=production
 3. Set root directory: `apps/backend`
 4. Auto-deploy
 
-## Option 6: Fly.io (Perlu CC)
+## Option 5: Fly.io (Perlu CC)
 
 **Note:** Fly.io sekarang memerlukan credit card untuk verifikasi, meskipun free tier tersedia.
 
@@ -423,7 +385,7 @@ fly secrets set MONGODB_URI=...
 fly secrets set JWT_SECRET=...
 ```
 
-## Option 7: Koyeb (Perlu CC)
+## Option 6: Koyeb (Perlu CC)
 
 **Note:** Koyeb sekarang memerlukan credit card untuk verifikasi, meskipun free tier tersedia.
 
@@ -493,12 +455,11 @@ Lihat: [VERCEL_BACKEND_DEPLOYMENT.md](./VERCEL_BACKEND_DEPLOYMENT.md)
 
 ### Production Apps (No CC)
 
-**→ Netlify, Cyclic.sh, atau Genezio**
+**→ Back4app atau Netlify**
 
-- Netlify: Built-in CI/CD, fullstack support, perlu restructure
-- Cyclic: Serverless, no sleep, easier setup, CI/CD support
-- Genezio: 1GB RAM, no sleep, serverless, CI/CD support
-- All: No CC required
+- **Back4app:** Docker support, CI/CD support, no CC required ⭐ Recommended
+- **Netlify:** Built-in CI/CD, fullstack support, perlu restructure ke serverless
+- Both: No CC required
 
 ### Container Apps (No CC)
 
@@ -510,12 +471,11 @@ Lihat: [VERCEL_BACKEND_DEPLOYMENT.md](./VERCEL_BACKEND_DEPLOYMENT.md)
 
 ### Full Free Stack (No CC)
 
-**→ Netlify (Fullstack) atau Cyclic/Genezio (Backend) + Vercel (Frontend)**
+**→ Back4app (Backend) + Vercel (Frontend) atau Netlify (Fullstack)**
 
-- Netlify: Fullstack (Frontend + Backend), built-in CI/CD, perlu restructure
-- Cyclic: Backend Express (no sleep, CI/CD)
-- Genezio: Backend Express (1GB RAM, no sleep, CI/CD)
-- Vercel: Frontend React (jika tidak pakai Netlify)
+- **Back4app:** Backend Express (Docker support, CI/CD) ⭐ Recommended
+- **Vercel:** Frontend React (unlimited, perfect untuk React)
+- **Netlify:** Fullstack (Frontend + Backend), built-in CI/CD, perlu restructure
 - All: No CC required
 
 ## CI/CD Integration
@@ -529,13 +489,14 @@ Netlify memiliki **built-in CI/CD**:
 - Branch deploys
 - Deploy notifications
 
-### Cyclic
+### Back4app
 
-Cyclic auto-deploys dari GitHub dengan CI/CD support.
+Back4app memiliki **built-in GitHub integration** untuk auto-deploy:
 
-### Genezio
-
-Genezio auto-deploys dari GitHub dengan CI/CD support.
+- Connect GitHub repository di container settings
+- Enable Auto Deploy
+- Back4app akan auto-deploy pada setiap push ke connected branch
+- Atau bisa trigger via API (jika credentials tersedia)
 
 ### Replit
 
@@ -567,13 +528,14 @@ Back4app auto-deploys dari GitHub dengan CI/CD support.
 
 | Platform | RAM      | Storage   | Bandwidth | Sleep  | CC  | CI/CD       |
 | -------- | -------- | --------- | --------- | ------ | --- | ----------- |
-| Netlify  | 512MB    | Unlimited | 100GB     | No     | ❌  | ✅ Built-in |
-| Cyclic   | 512MB    | 1GB       | Unlimited | **No** | ❌  | ✅ Yes      |
-| Genezio  | **1GB**  | 1GB       | Unlimited | **No** | ❌  | ✅ Yes      |
-| Replit   | 512MB    | Unlimited | Unlimited | Yes    | ❌  | ❌ Limited  |
 | Back4app | 256MB    | 1GB       | Unlimited | Yes    | ❌  | ✅ Yes      |
+| Netlify  | 512MB    | Unlimited | 100GB     | No     | ❌  | ✅ Built-in |
+| Replit   | 512MB    | Unlimited | Unlimited | Yes    | ❌  | ❌ Limited  |
+| Genezio  | **1GB**  | 1GB       | Unlimited | **No** | ✅  | ✅ Yes      |
 | Fly.io   | 256MB/VM | 3GB       | 160GB     | No     | ✅  | ✅ Yes      |
 | Koyeb    | 512MB    | 1GB       | Unlimited | Yes    | ✅  | ✅ Yes      |
+
+**Note:** Cyclic.sh sudah shutdown. Genezio sekarang memerlukan credit card.
 
 ## Troubleshooting
 
@@ -610,25 +572,32 @@ Untuk maximum reliability tanpa CC:
 
 **Untuk deployment tanpa credit card:**
 
+- **Best Docker + CI/CD:** Back4app (Docker support, CI/CD support) ⭐ Recommended
 - **Best CI/CD + Fullstack:** Netlify (built-in CI/CD, fullstack support)
-- **Best Docker + CI/CD:** Back4app (Docker support, CI/CD support) ⭐
-- **No Sleep + CI/CD:** Cyclic.sh atau Genezio (aplikasi tidak akan sleep, CI/CD support)
-- **Most RAM:** Genezio (1GB RAM)
 - **Online IDE:** Replit (develop di browser, limited CI/CD)
 
 **Rekomendasi berdasarkan kebutuhan:**
 
-- **Production dengan CI/CD:** Netlify (built-in), Back4app (Docker), Cyclic, atau Genezio
-- **Fullstack Apps:** Netlify (Frontend + Backend di satu platform)
+- **Production dengan CI/CD + Docker:** Back4app (Docker support, CI/CD) ⭐ Best Choice
+- **Production dengan CI/CD + Fullstack:** Netlify (built-in CI/CD, fullstack, perlu restructure)
 - **Docker Apps:** Back4app (Docker support, CI/CD) ⭐ Recommended
 - **Learning/Quick Setup:** Replit (online IDE, tapi limited CI/CD)
-- **No Sleep Production:** Cyclic atau Genezio
 
 **Platform yang perlu credit card:**
 
+- Genezio (perlu CC untuk verifikasi)
 - Fly.io (perlu CC untuk verifikasi)
 - Koyeb (perlu CC untuk verifikasi)
 - Render (perlu CC untuk verifikasi)
 - Railway (perlu CC untuk verifikasi)
 
-Semua platform di atas (Replit, Glitch, Back4app, Cyclic, Genezio) tidak memerlukan credit card untuk free tier.
+**Platform yang sudah tidak tersedia:**
+
+- Cyclic.sh (shutdown)
+- Glitch (shutdown)
+
+**Platform yang masih tersedia tanpa credit card:**
+
+- **Back4app** ⭐ (Docker support, CI/CD) - Recommended
+- **Netlify** (Fullstack, built-in CI/CD, perlu restructure)
+- **Replit** (Online IDE, limited CI/CD)

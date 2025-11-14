@@ -71,19 +71,54 @@ Jika tidak menggunakan Dockerfile:
 - **Start Command:** `node src/index.js`
 - **Port:** `3000` (atau dari environment variable)
 
-### Step 5: Environment Variables
+### Step 5: Environment Variables ⚠️ **CRITICAL**
+
+**Environment variables HARUS di-set sebelum deployment, atau aplikasi akan crash!**
 
 Add environment variables di Back4app dashboard:
 
-1. Di container settings, click **"Environment Variables"**
-2. Add variables:
+1. Di container settings, click **"Environment Variables"** atau **"Env Vars"**
+2. Click **"Add Variable"** untuk setiap variable
+3. Add variables berikut (semua **REQUIRED**):
+
    ```
-   MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/todo
-   JWT_SECRET=your-secret-key-here
+   MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/todo?retryWrites=true&w=majority
+   JWT_SECRET=your-super-secret-jwt-key-min-32-characters-long
    JWT_EXPIRES_IN=7d
    NODE_ENV=production
-   PORT=3000
+   PORT=3001
    ```
+
+**Important Notes:**
+
+- **MONGODB_URI**: **REQUIRED** - Get dari MongoDB Atlas (free tier available)
+  - Format: `mongodb+srv://username:password@cluster.mongodb.net/database-name`
+  - Replace `username`, `password`, `cluster`, dan `database-name` dengan nilai Anda
+  - **Tanpa ini, aplikasi akan crash saat startup!**
+
+- **JWT_SECRET**: **REQUIRED** - Secret key untuk JWT token (min 32 characters)
+  - Generate random string: `openssl rand -base64 32`
+  - Atau gunakan online generator
+
+- **JWT_EXPIRES_IN**: Optional (default: `7d`)
+  - Format: `7d`, `24h`, `3600s`, dll
+
+- **NODE_ENV**: Optional (default: `development`)
+  - Set ke `production` untuk production
+
+- **PORT**: Optional (default: `3001`)
+  - Back4app mungkin set PORT otomatis, tapi kita set `3001` untuk konsistensi
+  - **Pastikan PORT di environment variable sama dengan EXPOSE di Dockerfile!**
+
+**Cara mendapatkan MONGODB_URI dari MongoDB Atlas:**
+
+1. Login ke [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+2. Create cluster (free tier M0 available)
+3. Click **"Connect"** pada cluster
+4. Select **"Connect your application"**
+5. Copy connection string
+6. Replace `<password>` dengan password database user Anda
+7. Replace `<dbname>` dengan nama database (misal: `todo`)
 
 ### Step 6: Update Backend Code untuk Back4app
 
@@ -214,13 +249,64 @@ VITE_API_URL=https://your-container-name.back4app.io
 
 ## Troubleshooting
 
-### Container Not Starting
+### Container Not Starting / Health Check Failing
 
-- Check logs di Back4app dashboard
-- Verify `package.json` start script
-- Check environment variables
-- Verify port configuration
-- Check Dockerfile (jika menggunakan)
+**Gejala:** Container build berhasil, tapi health check gagal dengan error "no process is listening to the 3001 port"
+
+**Penyebab Umum:**
+
+1. **MONGODB_URI tidak di-set** ⚠️ **MOST COMMON**
+   - **Solusi:** Set `MONGODB_URI` di Back4app environment variables
+   - Aplikasi akan exit sebelum server start jika MongoDB connection gagal
+   - Check logs di Back4app dashboard untuk error message
+
+2. **MongoDB connection string salah**
+   - **Solusi:** Verify format: `mongodb+srv://user:pass@cluster.mongodb.net/dbname`
+   - Pastikan username dan password benar
+   - Pastikan IP whitelist di MongoDB Atlas sudah include `0.0.0.0/0` (allow all)
+
+3. **Port mismatch**
+   - **Solusi:** Pastikan `PORT` di environment variable sama dengan `EXPOSE` di Dockerfile (3001)
+   - Atau biarkan Back4app set PORT otomatis dan update Dockerfile
+
+4. **MongoDB Atlas IP whitelist**
+   - **Solusi:** Di MongoDB Atlas, Network Access > Add IP Address > `0.0.0.0/0` (allow all)
+
+**Cara Debug:**
+
+1. **Check logs di Back4app dashboard:**
+   - Go to container > **"Logs"** tab
+   - Look for error messages seperti:
+     - `MongoDB connection error`
+     - `MONGODB_URI not set`
+     - `authentication failed`
+     - `ENOTFOUND` atau `getaddrinfo`
+
+2. **Verify environment variables:**
+   - Go to container > **"Environment Variables"**
+   - Pastikan semua required variables sudah di-set
+   - Pastikan tidak ada typo (case-sensitive)
+
+3. **Test MongoDB connection:**
+   - Test connection string dengan MongoDB Compass atau `mongosh`
+   - Pastikan credentials benar
+
+**Error Messages dan Solusinya:**
+
+| Error Message | Penyebab | Solusi |
+|--------------|----------|--------|
+| `MONGODB_URI not set` | Environment variable tidak di-set | Set `MONGODB_URI` di Back4app |
+| `authentication failed` | Username/password salah | Check MongoDB Atlas credentials |
+| `ENOTFOUND` / `getaddrinfo` | Connection string format salah | Verify format connection string |
+| `timeout` | MongoDB unreachable | Check IP whitelist, network, atau cluster status |
+| `no process is listening` | App crashed sebelum start | Check logs untuk root cause (usually MongoDB) |
+
+### Container Build Fails
+
+- Check build logs di Back4app dashboard
+- Verify `package.json` dependencies
+- Check Dockerfile syntax
+- Verify build context path (`apps/backend`)
 
 ### Auto-Sleep Issues
 
