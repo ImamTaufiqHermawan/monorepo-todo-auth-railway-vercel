@@ -433,9 +433,9 @@ jobs:
             fi
           fi
           
-          if [ -z "${{ secrets.VERCEL_PROJECT_ID }}" ]; then
-            MISSING_VARS+=("VERCEL_PROJECT_ID")
-            echo "❌ VERCEL_PROJECT_ID is missing"
+          if [ -z "${{ secrets.VERCEL_PROJECT_ID }}" ] || [ "${{ secrets.VERCEL_PROJECT_ID }}" = "dummy" ] || [ "${{ secrets.VERCEL_PROJECT_ID }}" = "placeholder" ]; then
+            echo "⚠️  VERCEL_PROJECT_ID is not set (will auto-create project on first deploy)"
+            echo "   You can set it to 'dummy' or leave it empty for auto-create"
           else
             echo "✅ VERCEL_PROJECT_ID is set: ${{ secrets.VERCEL_PROJECT_ID }}"
           fi
@@ -519,6 +519,94 @@ jobs:
           echo "=========================================="
           echo ""
 
+      - name: 🔍 Verify and Create Vercel Project
+        run: |
+          echo "=========================================="
+          echo "🔍 Verifying Vercel Project"
+          echo "=========================================="
+          npm install -g vercel@latest
+          
+          # Set environment variables for Vercel CLI
+          export VERCEL_TOKEN="${{ secrets.VERCEL_TOKEN }}"
+          export VERCEL_ORG_ID="${{ secrets.VERCEL_USER_ID || secrets.VERCEL_ORG_ID }}"
+          export VERCEL_PROJECT_ID="${{ secrets.VERCEL_PROJECT_ID }}"
+          
+          echo "Using scope: $VERCEL_ORG_ID"
+          echo "Project ID: $VERCEL_PROJECT_ID"
+          echo ""
+          
+          # Check if project exists
+          echo "Checking if project exists..."
+          
+          # If VERCEL_PROJECT_ID is empty or "dummy", treat as not exists
+          if [ -z "$VERCEL_PROJECT_ID" ] || [ "$VERCEL_PROJECT_ID" = "dummy" ] || [ "$VERCEL_PROJECT_ID" = "placeholder" ]; then
+            PROJECT_EXISTS="no"
+            echo "⚠️  VERCEL_PROJECT_ID not set or is placeholder. Will create new project."
+          else
+            # Try to get project info to verify it exists
+            PROJECT_INFO=$(vercel projects inspect "$VERCEL_PROJECT_ID" --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" 2>&1)
+            if echo "$PROJECT_INFO" | grep -q "Project not found\|not found\|404"; then
+              PROJECT_EXISTS="no"
+            else
+              PROJECT_EXISTS="yes"
+            fi
+          fi
+          
+          if [ "$PROJECT_EXISTS" = "no" ]; then
+            echo ""
+            echo "⚠️  Project not found. Creating new project..."
+            echo ""
+            
+            # Get project name from repository
+            PROJECT_NAME="${{ github.event.repository.name }}-backend"
+            echo "Project name: $PROJECT_NAME"
+            
+            # Create project using Vercel API
+            echo "Creating project via Vercel API..."
+            CREATE_RESPONSE=$(curl -s -X POST "https://api.vercel.com/v9/projects" \
+              -H "Authorization: Bearer $VERCEL_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{
+                \"name\": \"$PROJECT_NAME\",
+                \"framework\": null,
+                \"gitRepository\": {
+                  \"type\": \"github\",
+                  \"repo\": \"${{ github.repository }}\",
+                  \"productionBranch\": \"main\"
+                },
+                \"rootDirectory\": \"apps/backend\"
+              }")
+            
+            # Check if creation was successful
+            if echo "$CREATE_RESPONSE" | grep -q "\"id\""; then
+              NEW_PROJECT_ID=$(echo "$CREATE_RESPONSE" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
+              echo "✅ Project created successfully!"
+              echo "   New Project ID: $NEW_PROJECT_ID"
+              echo ""
+              echo "⚠️  IMPORTANT: Update VERCEL_PROJECT_ID in GitHub Secrets:"
+              echo "   Go to: Repository Settings > Secrets > Actions"
+              echo "   Update VERCEL_PROJECT_ID to: $NEW_PROJECT_ID"
+              echo ""
+              echo "   For now, using the new project ID for this deployment..."
+              # Export new project ID for this run
+              echo "VERCEL_PROJECT_ID=$NEW_PROJECT_ID" >> $GITHUB_ENV
+            else
+              echo "❌ Failed to create project"
+              echo "Response: $CREATE_RESPONSE"
+              echo ""
+              echo "💡 Alternative: Create project manually at https://vercel.com/new"
+              echo "   Then update VERCEL_PROJECT_ID in GitHub Secrets"
+              exit 1
+            fi
+          else
+            echo "✅ Project exists"
+          fi
+          
+          echo ""
+          echo "✅ Project ready for deployment"
+          echo "=========================================="
+          echo ""
+
       - name: 🚀 Deploy to Vercel
         id: vercel-deploy
         uses: amondnet/vercel-action@v25
@@ -526,7 +614,7 @@ jobs:
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_USER_ID || secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-project-id: ${{ env.VERCEL_PROJECT_ID || secrets.VERCEL_PROJECT_ID }}
           vercel-args: "--prod"
           working-directory: ./apps/backend
           scope: ${{ secrets.VERCEL_USER_ID || secrets.VERCEL_ORG_ID }}
@@ -569,6 +657,21 @@ jobs:
           echo "   - Verify VERCEL_PROJECT_ID matches your project"
           echo "   - Check project settings in Vercel dashboard"
           echo ""
+          echo "   📝 How to get correct VERCEL_PROJECT_ID:"
+          echo "   1. Go to your Vercel project dashboard"
+          echo "   2. Click on your backend project"
+          echo "   3. Go to Settings > General"
+          echo "   4. Copy the 'Project ID' (not Project Name)"
+          echo "   5. Make sure project exists and is linked to your account"
+          echo ""
+          echo "   ℹ️  Note: Workflow will auto-create project if it doesn't exist"
+          echo "   - If auto-create fails, create it manually:"
+          echo "     - Go to https://vercel.com/new"
+          echo "     - Import your repository"
+          echo "     - Set root directory to: apps/backend"
+          echo "     - Deploy once manually to create the project"
+          echo "     - Then copy the Project ID from Settings > General"
+          echo ""
           echo "3. Check Build Logs:"
           echo "   - Review build output above for errors"
           echo "   - Check if dependencies installed correctly"
@@ -592,9 +695,20 @@ jobs:
           echo "   - Check Vercel dashboard for error messages"
           echo ""
           echo "7. Common Issues:"
+          echo "   - Project not found:"
+          echo "     * Project must be created in Vercel first"
+          echo "     * Go to https://vercel.com/new and import repository"
+          echo "     * Set root directory to: apps/backend"
+          echo "     * Deploy once manually, then copy Project ID"
           echo "   - Invalid token: Regenerate at https://vercel.com/account/tokens"
           echo "   - Wrong User ID: Check Vercel Dashboard > Settings > General"
-          echo "   - Wrong project ID: Check Vercel project settings (Backend Project)"
+          echo "   - Wrong project ID:"
+          echo "     * Must be the exact Project ID (not name)"
+          echo "     * Found in: Project > Settings > General > Project ID"
+          echo "     * Format: prj_xxxxxxxxxxxxxxxxxxxx"
+          echo "   - Scope mismatch:"
+          echo "     * VERCEL_USER_ID must match the account that owns the project"
+          echo "     * If project is in a team, use VERCEL_ORG_ID instead"
           echo "   - Missing env vars: Set MONGODB_URI and JWT_SECRET in Vercel project"
           echo "   - Database connection: Verify MONGODB_URI is correct and accessible"
           echo "   - Serverless function: Check api/index.js exists in apps/backend"
