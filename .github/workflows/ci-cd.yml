@@ -528,11 +528,68 @@ jobs:
           
           # Set environment variables for Vercel CLI
           export VERCEL_TOKEN="${{ secrets.VERCEL_TOKEN }}"
-          export VERCEL_ORG_ID="${{ secrets.VERCEL_USER_ID || secrets.VERCEL_ORG_ID }}"
+          export VERCEL_USER_ID="${{ secrets.VERCEL_USER_ID }}"
+          export VERCEL_ORG_ID="${{ secrets.VERCEL_ORG_ID }}"
           export VERCEL_PROJECT_ID="${{ secrets.VERCEL_PROJECT_ID }}"
           
-          echo "Using scope: $VERCEL_ORG_ID"
+          # Determine which scope to use
+          if [ -n "$VERCEL_ORG_ID" ]; then
+            SCOPE="$VERCEL_ORG_ID"
+            SCOPE_TYPE="Team"
+            echo "Using Team ID (VERCEL_ORG_ID): $SCOPE"
+          elif [ -n "$VERCEL_USER_ID" ]; then
+            SCOPE="$VERCEL_USER_ID"
+            SCOPE_TYPE="User"
+            echo "Using User ID (VERCEL_USER_ID): $SCOPE"
+          else
+            echo "❌ ERROR: Neither VERCEL_USER_ID nor VERCEL_ORG_ID is set!"
+            echo ""
+            echo "📝 How to fix:"
+            echo "1. For Personal Account: Set VERCEL_USER_ID"
+            echo "   - Go to Vercel Dashboard > Settings > General"
+            echo "   - Copy 'User ID' (not Team ID)"
+            echo ""
+            echo "2. For Team Account: Set VERCEL_ORG_ID"
+            echo "   - Go to Vercel Dashboard > Team Settings > General"
+            echo "   - Copy 'Team ID' (not User ID)"
+            echo ""
+            echo "⚠️  Note: User ID and Team ID are DIFFERENT!"
+            echo "   - User ID: For personal account projects"
+            echo "   - Team ID: For team account projects"
+            exit 1
+          fi
+          
+          echo "Scope type: $SCOPE_TYPE"
           echo "Project ID: $VERCEL_PROJECT_ID"
+          echo ""
+          
+          # Verify token and get account info
+          echo "Verifying Vercel token and account access..."
+          USER_INFO=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" "https://api.vercel.com/v2/user")
+          if echo "$USER_INFO" | grep -q "\"user\""; then
+            USER_EMAIL=$(echo "$USER_INFO" | grep -o '"email":"[^"]*' | head -1 | cut -d'"' -f4)
+            echo "✅ Token valid. Account: $USER_EMAIL"
+          else
+            echo "❌ Invalid token or cannot access account"
+            echo "Response: $USER_INFO"
+            exit 1
+          fi
+          
+          # List available teams and user info
+          echo ""
+          echo "📋 Available scopes:"
+          echo "User ID: $VERCEL_USER_ID"
+          if [ -n "$VERCEL_ORG_ID" ]; then
+            echo "Team ID: $VERCEL_ORG_ID"
+          fi
+          
+          # Try to list teams
+          TEAMS_RESPONSE=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" "https://api.vercel.com/v2/teams")
+          if echo "$TEAMS_RESPONSE" | grep -q "\"teams\""; then
+            echo ""
+            echo "Available teams:"
+            echo "$TEAMS_RESPONSE" | grep -o '"id":"[^"]*' | sed 's/"id":"/  - /' | head -5
+          fi
           echo ""
           
           # Check if project exists
@@ -543,12 +600,49 @@ jobs:
             PROJECT_EXISTS="no"
             echo "⚠️  VERCEL_PROJECT_ID not set or is placeholder. Will create new project."
           else
-            # Try to get project info to verify it exists
-            PROJECT_INFO=$(vercel projects inspect "$VERCEL_PROJECT_ID" --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" 2>&1)
-            if echo "$PROJECT_INFO" | grep -q "Project not found\|not found\|404"; then
-              PROJECT_EXISTS="no"
+            # Try to get project info to verify it exists with current scope
+            echo "Checking project with scope: $SCOPE ($SCOPE_TYPE)..."
+            PROJECT_INFO=$(vercel projects inspect "$VERCEL_PROJECT_ID" --token "$VERCEL_TOKEN" --scope "$SCOPE" 2>&1)
+            PROJECT_ERROR=$(echo "$PROJECT_INFO" | grep -i "error\|not found\|404\|unauthorized" || true)
+            
+            if [ -n "$PROJECT_ERROR" ]; then
+              echo "⚠️  Project not found with current scope, or scope mismatch"
+              echo "Error: $PROJECT_ERROR"
+              echo ""
+              echo "💡 Trying to find project in other scopes..."
+              
+              # Try with user ID if we're using team ID
+              if [ "$SCOPE_TYPE" = "Team" ] && [ -n "$VERCEL_USER_ID" ]; then
+                echo "Trying with User ID: $VERCEL_USER_ID"
+                PROJECT_INFO_USER=$(vercel projects inspect "$VERCEL_PROJECT_ID" --token "$VERCEL_TOKEN" --scope "$VERCEL_USER_ID" 2>&1)
+                if ! echo "$PROJECT_INFO_USER" | grep -q "Project not found\|not found\|404"; then
+                  echo "✅ Project found with User ID! Updating scope..."
+                  SCOPE="$VERCEL_USER_ID"
+                  SCOPE_TYPE="User"
+                  PROJECT_EXISTS="yes"
+                  echo "VERCEL_ORG_ID=$VERCEL_USER_ID" >> $GITHUB_ENV
+                else
+                  PROJECT_EXISTS="no"
+                fi
+              # Try with team ID if we're using user ID
+              elif [ "$SCOPE_TYPE" = "User" ] && [ -n "$VERCEL_ORG_ID" ]; then
+                echo "Trying with Team ID: $VERCEL_ORG_ID"
+                PROJECT_INFO_TEAM=$(vercel projects inspect "$VERCEL_PROJECT_ID" --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" 2>&1)
+                if ! echo "$PROJECT_INFO_TEAM" | grep -q "Project not found\|not found\|404"; then
+                  echo "✅ Project found with Team ID! Updating scope..."
+                  SCOPE="$VERCEL_ORG_ID"
+                  SCOPE_TYPE="Team"
+                  PROJECT_EXISTS="yes"
+                  echo "VERCEL_ORG_ID=$VERCEL_ORG_ID" >> $GITHUB_ENV
+                else
+                  PROJECT_EXISTS="no"
+                fi
+              else
+                PROJECT_EXISTS="no"
+              fi
             else
               PROJECT_EXISTS="yes"
+              echo "VERCEL_ORG_ID=$SCOPE" >> $GITHUB_ENV
             fi
           fi
           
@@ -561,9 +655,14 @@ jobs:
             PROJECT_NAME="${{ github.event.repository.name }}-backend"
             echo "Project name: $PROJECT_NAME"
             
-            # Create project using Vercel API
-            echo "Creating project via Vercel API..."
-            CREATE_RESPONSE=$(curl -s -X POST "https://api.vercel.com/v9/projects" \
+            # Create project using Vercel API with correct scope
+            echo "Creating project via Vercel API with scope: $SCOPE ($SCOPE_TYPE)..."
+            CREATE_URL="https://api.vercel.com/v9/projects"
+            if [ "$SCOPE_TYPE" = "Team" ]; then
+              CREATE_URL="$CREATE_URL?teamId=$SCOPE"
+            fi
+            
+            CREATE_RESPONSE=$(curl -s -X POST "$CREATE_URL" \
               -H "Authorization: Bearer $VERCEL_TOKEN" \
               -H "Content-Type: application/json" \
               -d "{
@@ -602,8 +701,12 @@ jobs:
             echo "✅ Project exists"
           fi
           
+          # Export final scope for deployment
+          echo "VERCEL_ORG_ID=$SCOPE" >> $GITHUB_ENV
+          
           echo ""
           echo "✅ Project ready for deployment"
+          echo "Using scope: $SCOPE ($SCOPE_TYPE)"
           echo "=========================================="
           echo ""
 
@@ -613,11 +716,11 @@ jobs:
         continue-on-error: false
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_USER_ID || secrets.VERCEL_ORG_ID }}
+          vercel-org-id: ${{ env.VERCEL_ORG_ID || secrets.VERCEL_ORG_ID || secrets.VERCEL_USER_ID }}
           vercel-project-id: ${{ env.VERCEL_PROJECT_ID || secrets.VERCEL_PROJECT_ID }}
           vercel-args: "--prod"
           working-directory: ./apps/backend
-          scope: ${{ secrets.VERCEL_USER_ID || secrets.VERCEL_ORG_ID }}
+          scope: ${{ env.VERCEL_ORG_ID || secrets.VERCEL_ORG_ID || secrets.VERCEL_USER_ID }}
 
       - name: ✅ Deployment Success
         if: success()
@@ -652,8 +755,18 @@ jobs:
           echo "   - Token should have project deployment permissions"
           echo ""
           echo "2. Check Vercel Project Settings:"
-          echo "   - Verify VERCEL_USER_ID matches your User ID (Settings > General)"
-          echo "   - For team accounts, use VERCEL_ORG_ID instead"
+          echo "   ⚠️  IMPORTANT: User ID and Team ID are DIFFERENT!"
+          echo ""
+          echo "   For Personal Account:"
+          echo "   - Set VERCEL_USER_ID (NOT Team ID)"
+          echo "   - Get from: Vercel Dashboard > Settings > General > User ID"
+          echo "   - Leave VERCEL_ORG_ID empty"
+          echo ""
+          echo "   For Team Account:"
+          echo "   - Set VERCEL_ORG_ID (NOT User ID)"
+          echo "   - Get from: Vercel Dashboard > Team Settings > General > Team ID"
+          echo "   - You can also set VERCEL_USER_ID if needed"
+          echo ""
           echo "   - Verify VERCEL_PROJECT_ID matches your project"
           echo "   - Check project settings in Vercel dashboard"
           echo ""
