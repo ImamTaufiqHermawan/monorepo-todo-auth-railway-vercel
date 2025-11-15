@@ -45,28 +45,65 @@ Aplikasi crash sebelum server start, biasanya karena:
 4. **Redeploy:**
    - Setelah set environment variables, click **"Redeploy"** atau **"Deploy"**
 
-### Issue 2: MongoDB Connection Error
+### Issue 2: MongoDB Connection Error - IP Whitelist ⚠️ **MOST COMMON**
 
-**Error Messages:**
-- `MongoServerError: Authentication failed`
-- `MongoNetworkError: getaddrinfo ENOTFOUND`
-- `MongoServerSelectionError: connection timed out`
+**Error Message:**
+```
+MongooseServerSelectionError: Could not connect to any servers in your MongoDB Atlas cluster. One common reason is that you're trying to access the database from an IP that isn't whitelisted. Make sure your current IP address is on your Atlas cluster's IP whitelist
+```
 
-**Solusi:**
+**Penyebab:**
+MongoDB Atlas memblokir koneksi dari IP yang tidak ada di whitelist. Back4app menggunakan dynamic IP addresses yang tidak terdaftar di MongoDB Atlas.
+
+**Solusi (STEP-BY-STEP):**
+
+1. **Login ke MongoDB Atlas:**
+   - Go to https://www.mongodb.com/cloud/atlas
+   - Login dengan account Anda
+
+2. **Go to Network Access:**
+   - Di sidebar kiri, click **"Network Access"**
+   - Atau langsung: https://cloud.mongodb.com/v2#/security/network/whitelist
+
+3. **Add IP Address:**
+   - Click **"Add IP Address"** button (hijau, di kanan atas)
+   - Click **"Allow Access from Anywhere"** button
+     - Ini akan otomatis set `0.0.0.0/0` yang berarti allow all IPs
+   - **Atau** manually:
+     - IP Address: `0.0.0.0/0`
+     - Comment: `Allow Back4app` (optional)
+   - Click **"Confirm"**
+
+4. **Wait for changes to propagate:**
+   - Perubahan bisa butuh 1-2 menit untuk propagate
+   - Status akan berubah dari "Pending" ke "Active"
+
+5. **Redeploy di Back4app:**
+   - Setelah IP whitelist updated, redeploy container di Back4app
+   - Connection seharusnya berhasil sekarang
+
+**Note:**
+- `0.0.0.0/0` berarti allow all IP addresses (untuk development/testing)
+- Untuk production, lebih baik gunakan specific IP ranges jika diketahui
+- Tapi untuk free tier dan testing, `0.0.0.0/0` adalah solusi yang praktis dan aman
+
+**Other MongoDB Connection Errors:**
 
 1. **Authentication Failed:**
+   - Error: `MongoServerError: Authentication failed`
    - Check username dan password di `MONGODB_URI`
    - Verify database user exists di MongoDB Atlas
    - Reset password jika perlu
 
 2. **ENOTFOUND / Connection String Format:**
+   - Error: `MongoNetworkError: getaddrinfo ENOTFOUND`
    - Verify format: `mongodb+srv://username:password@cluster.mongodb.net/database-name`
    - Pastikan tidak ada space atau karakter khusus yang tidak di-escape
    - URL-encode password jika mengandung karakter khusus
 
 3. **Connection Timeout:**
-   - Check MongoDB Atlas IP whitelist
-   - Add `0.0.0.0/0` untuk allow all IPs (untuk testing)
+   - Error: `MongoServerSelectionError: connection timed out`
+   - Check MongoDB Atlas IP whitelist (most common - see above)
    - Check cluster status di MongoDB Atlas dashboard
    - Verify network connectivity
 
@@ -220,7 +257,8 @@ Jika deployment gagal, check list berikut:
 - [ ] `MONGODB_URI` di-set di environment variables
 - [ ] `JWT_SECRET` di-set di environment variables
 - [ ] MongoDB connection string format benar
-- [ ] MongoDB Atlas IP whitelist include `0.0.0.0/0`
+- [ ] **MongoDB Atlas IP whitelist include `0.0.0.0/0`** ⚠️ **CRITICAL - MOST COMMON ISSUE**
+  - Go to MongoDB Atlas > Network Access > Add IP Address > Allow Access from Anywhere
 - [ ] MongoDB credentials (username/password) benar
 - [ ] `PORT` di environment variable match dengan Dockerfile EXPOSE
 - [ ] Root directory di-set: `apps/backend`
@@ -255,9 +293,10 @@ Jika masih mengalami issues:
 |-------|-------|----------|
 | `no process is listening` | App crashed before start | Check logs, usually MongoDB connection |
 | `MONGODB_URI not set` | Missing env var | Set `MONGODB_URI` in Back4app |
+| `IP that isn't whitelisted` ⚠️ **MOST COMMON** | MongoDB Atlas IP whitelist | Add `0.0.0.0/0` in MongoDB Atlas Network Access |
 | `Authentication failed` | Wrong credentials | Check MongoDB username/password |
 | `ENOTFOUND` | Wrong connection string | Verify `MONGODB_URI` format |
-| `connection timed out` | Network/IP issue | Check MongoDB Atlas IP whitelist |
+| `connection timed out` | Network/IP issue | Check MongoDB Atlas IP whitelist (most common) |
 | `Port already in use` | Port conflict | Change PORT or check container settings |
 | `Module not found` | Missing dependency | Check `package.json` and build logs |
 

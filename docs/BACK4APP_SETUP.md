@@ -92,18 +92,22 @@ Add environment variables di Back4app dashboard:
 **Important Notes:**
 
 - **MONGODB_URI**: **REQUIRED** - Get dari MongoDB Atlas (free tier available)
+
   - Format: `mongodb+srv://username:password@cluster.mongodb.net/database-name`
   - Replace `username`, `password`, `cluster`, dan `database-name` dengan nilai Anda
   - **Tanpa ini, aplikasi akan crash saat startup!**
 
 - **JWT_SECRET**: **REQUIRED** - Secret key untuk JWT token (min 32 characters)
+
   - Generate random string: `openssl rand -base64 32`
   - Atau gunakan online generator
 
 - **JWT_EXPIRES_IN**: Optional (default: `7d`)
+
   - Format: `7d`, `24h`, `3600s`, dll
 
 - **NODE_ENV**: Optional (default: `development`)
+
   - Set ke `production` untuk production
 
 - **PORT**: Optional (default: `3001`)
@@ -119,6 +123,30 @@ Add environment variables di Back4app dashboard:
 5. Copy connection string
 6. Replace `<password>` dengan password database user Anda
 7. Replace `<dbname>` dengan nama database (misal: `todo`)
+
+**⚠️ CRITICAL: Configure IP Whitelist di MongoDB Atlas**
+
+**Ini adalah step yang SANGAT PENTING dan sering terlewat!**
+
+MongoDB Atlas memblokir koneksi dari IP yang tidak ada di whitelist. Karena Back4app menggunakan dynamic IP addresses, kita perlu allow all IPs:
+
+1. Di MongoDB Atlas dashboard, go to **"Network Access"** (sidebar kiri)
+2. Click **"Add IP Address"** button
+3. Click **"Allow Access from Anywhere"** button (akan set `0.0.0.0/0`)
+   - **Atau** manually add: `0.0.0.0/0` dengan comment "Allow Back4app"
+4. Click **"Confirm"**
+
+**Note:**
+
+- `0.0.0.0/0` berarti allow all IP addresses (untuk development/testing)
+- Untuk production, lebih baik gunakan specific IP ranges jika diketahui
+- Tapi untuk free tier dan testing, `0.0.0.0/0` adalah solusi yang praktis
+
+**Tanpa step ini, aplikasi akan selalu gagal connect ke MongoDB dengan error:**
+
+```
+MongooseServerSelectionError: Could not connect to any servers in your MongoDB Atlas cluster. One common reason is that you're trying to access the database from an IP that isn't whitelisted.
+```
 
 ### Step 6: Update Backend Code untuk Back4app
 
@@ -256,25 +284,36 @@ VITE_API_URL=https://your-container-name.back4app.io
 **Penyebab Umum:**
 
 1. **MONGODB_URI tidak di-set** ⚠️ **MOST COMMON**
+
    - **Solusi:** Set `MONGODB_URI` di Back4app environment variables
    - Aplikasi akan exit sebelum server start jika MongoDB connection gagal
    - Check logs di Back4app dashboard untuk error message
 
 2. **MongoDB connection string salah**
+
    - **Solusi:** Verify format: `mongodb+srv://user:pass@cluster.mongodb.net/dbname`
    - Pastikan username dan password benar
    - Pastikan IP whitelist di MongoDB Atlas sudah include `0.0.0.0/0` (allow all)
 
 3. **Port mismatch**
+
    - **Solusi:** Pastikan `PORT` di environment variable sama dengan `EXPOSE` di Dockerfile (3001)
    - Atau biarkan Back4app set PORT otomatis dan update Dockerfile
 
-4. **MongoDB Atlas IP whitelist**
-   - **Solusi:** Di MongoDB Atlas, Network Access > Add IP Address > `0.0.0.0/0` (allow all)
+4. **MongoDB Atlas IP whitelist** ⚠️ **VERY COMMON**
+   - **Error:** `MongooseServerSelectionError: Could not connect to any servers... IP that isn't whitelisted`
+   - **Solusi:**
+     1. Go to MongoDB Atlas dashboard
+     2. Click **"Network Access"** di sidebar
+     3. Click **"Add IP Address"**
+     4. Click **"Allow Access from Anywhere"** (sets `0.0.0.0/0`)
+     5. Click **"Confirm"**
+   - **Tanpa ini, aplikasi TIDAK AKAN BISA connect ke MongoDB!**
 
 **Cara Debug:**
 
 1. **Check logs di Back4app dashboard:**
+
    - Go to container > **"Logs"** tab
    - Look for error messages seperti:
      - `MongoDB connection error`
@@ -283,6 +322,7 @@ VITE_API_URL=https://your-container-name.back4app.io
      - `ENOTFOUND` atau `getaddrinfo`
 
 2. **Verify environment variables:**
+
    - Go to container > **"Environment Variables"**
    - Pastikan semua required variables sudah di-set
    - Pastikan tidak ada typo (case-sensitive)
@@ -293,13 +333,13 @@ VITE_API_URL=https://your-container-name.back4app.io
 
 **Error Messages dan Solusinya:**
 
-| Error Message | Penyebab | Solusi |
-|--------------|----------|--------|
-| `MONGODB_URI not set` | Environment variable tidak di-set | Set `MONGODB_URI` di Back4app |
-| `authentication failed` | Username/password salah | Check MongoDB Atlas credentials |
-| `ENOTFOUND` / `getaddrinfo` | Connection string format salah | Verify format connection string |
-| `timeout` | MongoDB unreachable | Check IP whitelist, network, atau cluster status |
-| `no process is listening` | App crashed sebelum start | Check logs untuk root cause (usually MongoDB) |
+| Error Message               | Penyebab                          | Solusi                                           |
+| --------------------------- | --------------------------------- | ------------------------------------------------ |
+| `MONGODB_URI not set`       | Environment variable tidak di-set | Set `MONGODB_URI` di Back4app                    |
+| `authentication failed`     | Username/password salah           | Check MongoDB Atlas credentials                  |
+| `ENOTFOUND` / `getaddrinfo` | Connection string format salah    | Verify format connection string                  |
+| `timeout`                   | MongoDB unreachable               | Check IP whitelist, network, atau cluster status |
+| `no process is listening`   | App crashed sebelum start         | Check logs untuk root cause (usually MongoDB)    |
 
 ### Container Build Fails
 
