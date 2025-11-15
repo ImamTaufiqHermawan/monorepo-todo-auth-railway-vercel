@@ -583,12 +583,18 @@ jobs:
             echo "Team ID: $VERCEL_ORG_ID"
           fi
           
-          # Try to list teams
+          # Try to list teams and extract first team ID if available
           TEAMS_RESPONSE=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" "https://api.vercel.com/v2/teams")
+          FIRST_TEAM_ID=""
           if echo "$TEAMS_RESPONSE" | grep -q "\"teams\""; then
             echo ""
             echo "Available teams:"
             echo "$TEAMS_RESPONSE" | grep -o '"id":"[^"]*' | sed 's/"id":"/  - /' | head -5
+            # Extract first team ID
+            FIRST_TEAM_ID=$(echo "$TEAMS_RESPONSE" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
+            if [ -n "$FIRST_TEAM_ID" ]; then
+              echo "First team ID found: $FIRST_TEAM_ID"
+            fi
           fi
           echo ""
           
@@ -625,16 +631,37 @@ jobs:
                   PROJECT_EXISTS="no"
                 fi
               # Try with team ID if we're using user ID
-              elif [ "$SCOPE_TYPE" = "User" ] && [ -n "$VERCEL_ORG_ID" ]; then
-                echo "Trying with Team ID: $VERCEL_ORG_ID"
-                PROJECT_INFO_TEAM=$(vercel projects inspect "$VERCEL_PROJECT_ID" --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" 2>&1)
-                if ! echo "$PROJECT_INFO_TEAM" | grep -q "Project not found\|not found\|404"; then
-                  echo "✅ Project found with Team ID! Updating scope..."
-                  SCOPE="$VERCEL_ORG_ID"
-                  SCOPE_TYPE="Team"
-                  PROJECT_EXISTS="yes"
-                  echo "VERCEL_ORG_ID=$VERCEL_ORG_ID" >> $GITHUB_ENV
-                else
+              elif [ "$SCOPE_TYPE" = "User" ]; then
+                # First try with VERCEL_ORG_ID from secrets if set
+                if [ -n "$VERCEL_ORG_ID" ]; then
+                  echo "Trying with Team ID from secrets: $VERCEL_ORG_ID"
+                  PROJECT_INFO_TEAM=$(vercel projects inspect "$VERCEL_PROJECT_ID" --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" 2>&1)
+                  if ! echo "$PROJECT_INFO_TEAM" | grep -q "Project not found\|not found\|404\|Error"; then
+                    echo "✅ Project found with Team ID from secrets! Updating scope..."
+                    SCOPE="$VERCEL_ORG_ID"
+                    SCOPE_TYPE="Team"
+                    PROJECT_EXISTS="yes"
+                    echo "VERCEL_ORG_ID=$VERCEL_ORG_ID" >> $GITHUB_ENV
+                  fi
+                fi
+                
+                # If still not found and we have a team ID from API, try that
+                if [ "$PROJECT_EXISTS" != "yes" ] && [ -n "$FIRST_TEAM_ID" ]; then
+                  echo "Trying with first Team ID from API: $FIRST_TEAM_ID"
+                  PROJECT_INFO_TEAM=$(vercel projects inspect "$VERCEL_PROJECT_ID" --token "$VERCEL_TOKEN" --scope "$FIRST_TEAM_ID" 2>&1)
+                  if ! echo "$PROJECT_INFO_TEAM" | grep -q "Project not found\|not found\|404\|Error"; then
+                    echo "✅ Project found with Team ID from API! Updating scope..."
+                    SCOPE="$FIRST_TEAM_ID"
+                    SCOPE_TYPE="Team"
+                    PROJECT_EXISTS="yes"
+                    echo "VERCEL_ORG_ID=$FIRST_TEAM_ID" >> $GITHUB_ENV
+                    echo ""
+                    echo "⚠️  IMPORTANT: Update VERCEL_ORG_ID in GitHub Secrets:"
+                    echo "   Set VERCEL_ORG_ID to: $FIRST_TEAM_ID"
+                  else
+                    PROJECT_EXISTS="no"
+                  fi
+                elif [ "$PROJECT_EXISTS" != "yes" ]; then
                   PROJECT_EXISTS="no"
                 fi
               else

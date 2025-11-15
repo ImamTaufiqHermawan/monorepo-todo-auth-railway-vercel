@@ -56,6 +56,89 @@ app.get("/health", (req, res) => {
   });
 });
 
+// Detailed health checks
+app.get("/health-checks", async (req, res) => {
+  const health = {
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || "development",
+    version: process.env.npm_package_version || "1.0.0",
+    checks: {
+      api: {
+        status: "ok",
+        message: "API is running",
+      },
+      database: {
+        status: "unknown",
+        message: "Checking database connection...",
+      },
+      memory: {
+        status: "ok",
+        used: Math.round((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100,
+        total: Math.round((process.memoryUsage().heapTotal / 1024 / 1024) * 100) / 100,
+        unit: "MB",
+      },
+    },
+  };
+
+  // Check database connection
+  try {
+    if (mongoose.connection.readyState === 1) {
+      health.checks.database = {
+        status: "ok",
+        message: "Database connected",
+        state: "connected",
+      };
+    } else if (mongoose.connection.readyState === 2) {
+      health.checks.database = {
+        status: "warning",
+        message: "Database connecting",
+        state: "connecting",
+      };
+    } else {
+      health.checks.database = {
+        status: "error",
+        message: "Database not connected",
+        state: "disconnected",
+      };
+      health.status = "degraded";
+    }
+  } catch (error) {
+    health.checks.database = {
+      status: "error",
+      message: error.message,
+      state: "error",
+    };
+    health.status = "degraded";
+  }
+
+  // Check environment variables
+  const requiredEnvVars = ["MONGODB_URI", "JWT_SECRET"];
+  const missingEnvVars = requiredEnvVars.filter((key) => !process.env[key]);
+  
+  if (missingEnvVars.length > 0) {
+    health.checks.environment = {
+      status: "warning",
+      message: `Missing environment variables: ${missingEnvVars.join(", ")}`,
+      missing: missingEnvVars,
+    };
+    if (health.status === "ok") {
+      health.status = "degraded";
+    }
+  } else {
+    health.checks.environment = {
+      status: "ok",
+      message: "All required environment variables are set",
+    };
+  }
+
+  // Set HTTP status code based on health status
+  const statusCode = health.status === "ok" ? 200 : health.status === "degraded" ? 200 : 503;
+
+  res.status(statusCode).json(health);
+});
+
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/todos", todoRoutes);
