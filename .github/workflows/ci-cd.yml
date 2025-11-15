@@ -1,4 +1,4 @@
-name: CI/CD Pipeline - Back4app + Vercel
+name: CI/CD Pipeline - Vercel Deployment
 
 on:
   push:
@@ -20,145 +20,151 @@ jobs:
       - run: pnpm install
       - run: pnpm test || true
 
-  build-backend:
-    name: Build Backend Docker Image
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - name: Build Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./apps/backend
-          push: false
-          tags: todo-backend:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+  # COMMENTED OUT: Backend deployments - focusing on Vercel only
+  # build-backend:
+  #   name: Build Backend Docker Image
+  #   needs: test
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/main'
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: docker/setup-buildx-action@v3
+  #     - name: Build Docker image
+  #       uses: docker/build-push-action@v5
+  #       with:
+  #         context: ./apps/backend
+  #         push: false
+  #         tags: todo-backend:latest
+  #         cache-from: type=gha
+  #         cache-to: type=gha,mode=max
 
-  deploy-backend-railway:
-    name: Deploy Backend to Railway
-    needs: build-backend
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    environment: production
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-      - run: npm install -g @railway/cli@latest
-      - name: Setup Railway authentication
-        run: |
-          mkdir -p ~/.railway
-          echo "${{ secrets.RAILWAY_TOKEN }}" > ~/.railway/token.json
-      - name: Deploy to Railway
-        run: |
-          if [ -z "${{ secrets.RAILWAY_TOKEN }}" ]; then
-            echo "RAILWAY_TOKEN not set, skipping deployment"
-            exit 0
-          fi
-          cd apps/backend
-          railway link --project ${{ secrets.RAILWAY_PROJECT_ID }} --service ${{ secrets.RAILWAY_SERVICE_ID }}
-          railway up --detach
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+  # COMMENTED OUT: Railway deployment
+  # deploy-backend-railway:
+  #   name: Deploy Backend to Railway
+  #   needs: build-backend
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/main'
+  #   environment: production
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: "22"
+  #     - run: npm install -g @railway/cli@latest
+  #     - name: Setup Railway authentication
+  #       run: |
+  #         mkdir -p ~/.railway
+  #         echo "${{ secrets.RAILWAY_TOKEN }}" > ~/.railway/token.json
+  #     - name: Deploy to Railway
+  #       run: |
+  #         if [ -z "${{ secrets.RAILWAY_TOKEN }}" ]; then
+  #           echo "RAILWAY_TOKEN not set, skipping deployment"
+  #           exit 0
+  #         fi
+  #         cd apps/backend
+  #         railway link --project ${{ secrets.RAILWAY_PROJECT_ID }} --service ${{ secrets.RAILWAY_SERVICE_ID }}
+  #         railway up --detach
+  #       env:
+  #         RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+  #         RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+  #         RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
 
-  deploy-backend-render:
-    name: Deploy Backend to Render
-    needs: build-backend
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    environment: production
-    steps:
-      - name: Trigger Render Deploy
-        run: |
-          if [ -z "${{ secrets.RENDER_API_KEY }}" ]; then
-            echo "RENDER_API_KEY not set, skipping deployment"
-            exit 0
-          fi
-          curl -X POST "https://api.render.com/deploy/srv/${{ secrets.RENDER_SERVICE_ID }}?key=${{ secrets.RENDER_API_KEY }}"
+  # COMMENTED OUT: Render deployment
+  # deploy-backend-render:
+  #   name: Deploy Backend to Render
+  #   needs: build-backend
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/main'
+  #   environment: production
+  #   steps:
+  #     - name: Trigger Render Deploy
+  #       run: |
+  #         if [ -z "${{ secrets.RENDER_API_KEY }}" ]; then
+  #           echo "RENDER_API_KEY not set, skipping deployment"
+  #           exit 0
+  #         fi
+  #         curl -X POST "https://api.render.com/deploy/srv/${{ secrets.RENDER_SERVICE_ID }}?key=${{ secrets.RENDER_API_KEY }}"
 
-  deploy-backend-glitch:
-    name: Deploy Backend to Glitch
-    needs: build-backend
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    environment: production
-    steps:
-      - name: Trigger Glitch Refresh
-        run: |
-          if [ -z "${{ secrets.GLITCH_TOKEN }}" ]; then
-            echo "GLITCH_TOKEN not set, skipping deployment"
-            exit 0
-          fi
-          curl -X POST "https://api.glitch.com/project/${{ secrets.GLITCH_PROJECT_ID }}/refresh" \
-            -H "Authorization: ${{ secrets.GLITCH_TOKEN }}"
+  # COMMENTED OUT: Glitch deployment
+  # deploy-backend-glitch:
+  #   name: Deploy Backend to Glitch
+  #   needs: build-backend
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/main'
+  #   environment: production
+  #   steps:
+  #     - name: Trigger Glitch Refresh
+  #       run: |
+  #         if [ -z "${{ secrets.GLITCH_TOKEN }}" ]; then
+  #           echo "GLITCH_TOKEN not set, skipping deployment"
+  #           exit 0
+  #         fi
+  #         curl -X POST "https://api.glitch.com/project/${{ secrets.GLITCH_PROJECT_ID }}/refresh" \
+  #           -H "Authorization: ${{ secrets.GLITCH_TOKEN }}"
 
-  deploy-backend-fly:
-    name: Deploy Backend to Fly.io
-    needs: build-backend
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    environment: production
-    steps:
-      - uses: actions/checkout@v4
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-      - name: Deploy to Fly.io
-        run: |
-          if [ -z "${{ secrets.FLY_API_TOKEN }}" ]; then
-            echo "FLY_API_TOKEN not set, skipping deployment"
-            exit 0
-          fi
-          cd apps/backend
-          flyctl deploy --remote-only
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+  # COMMENTED OUT: Fly.io deployment
+  # deploy-backend-fly:
+  #   name: Deploy Backend to Fly.io
+  #   needs: build-backend
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/main'
+  #   environment: production
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: superfly/flyctl-actions/setup-flyctl@master
+  #     - name: Deploy to Fly.io
+  #       run: |
+  #         if [ -z "${{ secrets.FLY_API_TOKEN }}" ]; then
+  #           echo "FLY_API_TOKEN not set, skipping deployment"
+  #           exit 0
+  #         fi
+  #         cd apps/backend
+  #         flyctl deploy --remote-only
+  #       env:
+  #         FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
-  deploy-backend-back4app:
-    name: Deploy Backend to Back4app
-    needs: build-backend
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    environment: production
-    steps:
-      - uses: actions/checkout@v4
-      - name: Deploy to Back4app via GitHub Integration
-        run: |
-          echo "🚀 Back4app Auto-Deploy via GitHub Integration"
-          echo "Repository: ${{ github.repository }}"
-          echo "Branch: ${{ github.ref_name }}"
-          echo "Commit: ${{ github.sha }}"
-          echo ""
-          echo "✅ Back4app will automatically deploy when GitHub integration is enabled"
-          echo "📝 To enable: Go to Back4app Container Settings > GitHub Integration"
-          echo "   - Connect repository: ${{ github.repository }}"
-          echo "   - Set branch: main"
-          echo "   - Set root directory: apps/backend"
-          echo "   - Enable Auto Deploy"
-          echo ""
-          echo "💡 Alternative: If you have Back4app API credentials, you can use API method"
-          if [ -n "${{ secrets.BACK4APP_REST_API_KEY }}" ] && [ -n "${{ secrets.BACK4APP_APP_ID }}" ]; then
-            echo "📡 Attempting API deployment..."
-            curl -X POST "https://api.back4app.com/v1/deploy" \
-              -H "X-Parse-Application-Id: ${{ secrets.BACK4APP_APP_ID }}" \
-              -H "X-Parse-REST-API-Key: ${{ secrets.BACK4APP_REST_API_KEY }}" \
-              -H "Content-Type: application/json" \
-              -d "{
-                \"sourceControl\": {
-                  \"provider\": \"github\",
-                  \"owner\": \"${{ github.repository_owner }}\",
-                  \"repo\": \"${{ github.event.repository.name }}\",
-                  \"branch\": \"main\",
-                  \"rootDirectory\": \"apps/backend\"
-                }
-              }" || echo "⚠️ API deployment failed, using GitHub integration instead"
-          else
-            echo "ℹ️ API credentials not set, using GitHub integration method"
-          fi
+  # COMMENTED OUT: Back4app deployment
+  # deploy-backend-back4app:
+  #   name: Deploy Backend to Back4app
+  #   needs: build-backend
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/main'
+  #   environment: production
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Deploy to Back4app via GitHub Integration
+  #       run: |
+  #         echo "🚀 Back4app Auto-Deploy via GitHub Integration"
+  #         echo "Repository: ${{ github.repository }}"
+  #         echo "Branch: ${{ github.ref_name }}"
+  #         echo "Commit: ${{ github.sha }}"
+  #         echo ""
+  #         echo "✅ Back4app will automatically deploy when GitHub integration is enabled"
+  #         echo "📝 To enable: Go to Back4app Container Settings > GitHub Integration"
+  #         echo "   - Connect repository: ${{ github.repository }}"
+  #         echo "   - Set branch: main"
+  #         echo "   - Set root directory: apps/backend"
+  #         echo "   - Enable Auto Deploy"
+  #         echo ""
+  #         echo "💡 Alternative: If you have Back4app API credentials, you can use API method"
+  #         if [ -n "${{ secrets.BACK4APP_REST_API_KEY }}" ] && [ -n "${{ secrets.BACK4APP_APP_ID }}" ]; then
+  #           echo "📡 Attempting API deployment..."
+  #           curl -X POST "https://api.back4app.com/v1/deploy" \
+  #             -H "X-Parse-Application-Id: ${{ secrets.BACK4APP_APP_ID }}" \
+  #             -H "X-Parse-REST-API-Key: ${{ secrets.BACK4APP_REST_API_KEY }}" \
+  #             -H "Content-Type: application/json" \
+  #             -d "{
+  #               \"sourceControl\": {
+  #                 \"provider\": \"github\",
+  #                 \"owner\": \"${{ github.repository_owner }}\",
+  #                 \"repo\": \"${{ github.event.repository.name }}\",
+  #                 \"branch\": \"main\",
+  #                 \"rootDirectory\": \"apps/backend\"
+  #               }
+  #             }" || echo "⚠️ API deployment failed, using GitHub integration instead"
+  #         else
+  #           echo "ℹ️ API credentials not set, using GitHub integration method"
+  #         fi
 
   build-frontend:
     name: Build Frontend
@@ -176,38 +182,223 @@ jobs:
       - name: Build frontend
         run: pnpm --filter frontend build
         env:
-          VITE_API_URL: ${{ secrets.BACK4APP_BACKEND_URL || secrets.RAILWAY_BACKEND_URL || 'https://your-backend.back4app.io' }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL || secrets.BACK4APP_BACKEND_URL || secrets.RAILWAY_BACKEND_URL || 'https://your-backend.back4app.io' }}
 
   deploy-frontend-vercel:
     name: Deploy Frontend to Vercel
-    needs: [build-frontend, deploy-backend-back4app]
+    needs: build-frontend
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     environment: production
     steps:
+      - name: 🚀 Start Vercel Deployment
+        run: |
+          echo "=========================================="
+          echo "🚀 Starting Vercel Deployment"
+          echo "=========================================="
+          echo "Repository: ${{ github.repository }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Triggered by: ${{ github.actor }}"
+          echo ""
+
+      - name: ✅ Validate Required Environment Variables
+        run: |
+          echo "=========================================="
+          echo "✅ Validating Environment Variables"
+          echo "=========================================="
+          
+          MISSING_VARS=()
+          
+          if [ -z "${{ secrets.VERCEL_TOKEN }}" ]; then
+            MISSING_VARS+=("VERCEL_TOKEN")
+            echo "❌ VERCEL_TOKEN is missing"
+          else
+            echo "✅ VERCEL_TOKEN is set (length: ${#VERCEL_TOKEN})"
+          fi
+          
+          # Check for VERCEL_USER_ID (for personal account) or VERCEL_ORG_ID (for team account)
+          if [ -z "${{ secrets.VERCEL_USER_ID }}" ] && [ -z "${{ secrets.VERCEL_ORG_ID }}" ]; then
+            MISSING_VARS+=("VERCEL_USER_ID or VERCEL_ORG_ID")
+            echo "❌ VERCEL_USER_ID or VERCEL_ORG_ID is missing"
+          else
+            if [ -n "${{ secrets.VERCEL_USER_ID }}" ]; then
+              echo "✅ VERCEL_USER_ID is set: ${{ secrets.VERCEL_USER_ID }}"
+            else
+              echo "✅ VERCEL_ORG_ID is set: ${{ secrets.VERCEL_ORG_ID }}"
+            fi
+          fi
+          
+          if [ -z "${{ secrets.VERCEL_PROJECT_ID }}" ]; then
+            MISSING_VARS+=("VERCEL_PROJECT_ID")
+            echo "❌ VERCEL_PROJECT_ID is missing"
+          else
+            echo "✅ VERCEL_PROJECT_ID is set: ${{ secrets.VERCEL_PROJECT_ID }}"
+          fi
+          
+          if [ -z "${{ secrets.VITE_API_URL }}" ] && [ -z "${{ secrets.BACK4APP_BACKEND_URL }}" ] && [ -z "${{ secrets.RAILWAY_BACKEND_URL }}" ]; then
+            echo "⚠️  WARNING: VITE_API_URL, BACK4APP_BACKEND_URL, and RAILWAY_BACKEND_URL are all missing"
+            echo "   Using default: https://your-backend.back4app.io"
+          else
+            API_URL="${{ secrets.VITE_API_URL || secrets.BACK4APP_BACKEND_URL || secrets.RAILWAY_BACKEND_URL }}"
+            echo "✅ API URL is set: $API_URL"
+          fi
+          
+          echo ""
+          if [ ${#MISSING_VARS[@]} -gt 0 ]; then
+            echo "=========================================="
+            echo "❌ DEPLOYMENT FAILED: Missing Required Secrets"
+            echo "=========================================="
+            echo "Missing secrets: ${MISSING_VARS[*]}"
+            echo ""
+            echo "📝 How to fix:"
+            echo "1. Go to GitHub Repository Settings > Secrets and variables > Actions"
+            echo "2. Add the following secrets:"
+            echo "   - VERCEL_TOKEN: Get from https://vercel.com/account/tokens"
+            echo "   - VERCEL_USER_ID: Get from Vercel Dashboard > Settings > General (User ID)"
+            echo "   - VERCEL_PROJECT_ID: Get from Vercel Project > Settings > General"
+            echo "   - VITE_API_URL (optional): Your backend API URL"
+            echo ""
+            echo "🔗 Vercel Setup Guide:"
+            echo "   - Token: https://vercel.com/account/tokens"
+            echo "   - User ID: Vercel Dashboard > Settings > General (for personal account)"
+            echo "   - Project ID: Vercel Project > Settings > General"
+            echo "=========================================="
+            exit 1
+          fi
+          
+          echo "✅ All required environment variables are set"
+          echo "=========================================="
+          echo ""
+
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - uses: amondnet/vercel-action@v25
+
+      - name: 📦 Install Dependencies
+        run: |
+          echo "=========================================="
+          echo "📦 Installing Dependencies"
+          echo "=========================================="
+          npm install -g pnpm
+          pnpm --version
+          echo ""
+
+      - name: 🔨 Build Frontend
+        run: |
+          echo "=========================================="
+          echo "🔨 Building Frontend"
+          echo "=========================================="
+          cd apps/frontend
+          pnpm install
+          pnpm build
+          echo ""
+          echo "✅ Build completed successfully"
+          echo "=========================================="
+          echo ""
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL || secrets.BACK4APP_BACKEND_URL || secrets.RAILWAY_BACKEND_URL || 'https://your-backend.back4app.io' }}
+
+      - name: 🚀 Deploy to Vercel
+        id: vercel-deploy
+        uses: amondnet/vercel-action@v25
+        continue-on-error: false
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-org-id: ${{ secrets.VERCEL_USER_ID || secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           vercel-args: "--prod"
           working-directory: ./apps/frontend
-          scope: ${{ secrets.VERCEL_ORG_ID }}
+          scope: ${{ secrets.VERCEL_USER_ID || secrets.VERCEL_ORG_ID }}
         env:
-          VITE_API_URL: ${{ secrets.BACK4APP_BACKEND_URL || secrets.RAILWAY_BACKEND_URL || 'https://your-backend.back4app.io' }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL || secrets.BACK4APP_BACKEND_URL || secrets.RAILWAY_BACKEND_URL || 'https://your-backend.back4app.io' }}
+
+      - name: ✅ Deployment Success
+        if: success()
+        run: |
+          echo "=========================================="
+          echo "✅ VERCEL DEPLOYMENT SUCCESSFUL"
+          echo "=========================================="
+          echo "Deployment completed successfully!"
+          echo "Check Vercel dashboard for deployment URL"
+          echo "=========================================="
+
+      - name: ❌ Deployment Failed - Detailed Error Log
+        if: failure()
+        run: |
+          echo "=========================================="
+          echo "❌ VERCEL DEPLOYMENT FAILED"
+          echo "=========================================="
+          echo ""
+          echo "📋 Deployment Details:"
+          echo "  - Repository: ${{ github.repository }}"
+          echo "  - Branch: ${{ github.ref_name }}"
+          echo "  - Commit: ${{ github.sha }}"
+          echo "  - Actor: ${{ github.actor }}"
+          echo "  - Workflow: ${{ github.workflow }}"
+          echo "  - Run ID: ${{ github.run_id }}"
+          echo ""
+          echo "🔍 Troubleshooting Steps:"
+          echo ""
+          echo "1. Check Vercel Token:"
+          echo "   - Go to: https://vercel.com/account/tokens"
+          echo "   - Ensure token is valid and not expired"
+          echo "   - Token should have project deployment permissions"
+          echo ""
+          echo "2. Check Vercel Project Settings:"
+          echo "   - Verify VERCEL_USER_ID matches your User ID (Settings > General)"
+          echo "   - For team accounts, use VERCEL_ORG_ID instead"
+          echo "   - Verify VERCEL_PROJECT_ID matches your project"
+          echo "   - Check project settings in Vercel dashboard"
+          echo ""
+          echo "3. Check Build Logs:"
+          echo "   - Review build output above for errors"
+          echo "   - Check if dependencies installed correctly"
+          echo "   - Verify build command: pnpm build"
+          echo ""
+          echo "4. Check Environment Variables:"
+          echo "   - VITE_API_URL: ${{ secrets.VITE_API_URL || 'NOT SET' }}"
+          echo "   - BACK4APP_BACKEND_URL: ${{ secrets.BACK4APP_BACKEND_URL || 'NOT SET' }}"
+          echo "   - RAILWAY_BACKEND_URL: ${{ secrets.RAILWAY_BACKEND_URL || 'NOT SET' }}"
+          echo ""
+          echo "5. Check Vercel Action Output:"
+          echo "   - Review the 'Deploy to Vercel' step output above"
+          echo "   - Look for specific error messages from Vercel API"
+          echo ""
+          echo "6. Manual Deployment Test:"
+          echo "   - Try deploying manually: vercel --prod"
+          echo "   - Check Vercel dashboard for error messages"
+          echo ""
+          echo "7. Common Issues:"
+          echo "   - Invalid token: Regenerate at https://vercel.com/account/tokens"
+          echo "   - Wrong User ID: Check Vercel Dashboard > Settings > General"
+          echo "   - Wrong project ID: Check Vercel project settings"
+          echo "   - Build failures: Check frontend build locally"
+          echo "   - Network issues: Check GitHub Actions network"
+          echo ""
+          echo "📚 Resources:"
+          echo "   - Vercel Docs: https://vercel.com/docs"
+          echo "   - Vercel Action: https://github.com/amondnet/vercel-action"
+          echo "   - GitHub Actions Logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo ""
+          echo "=========================================="
+          exit 1
 
   notify:
     name: Deployment Notification
-    needs: [deploy-backend-back4app, deploy-frontend-vercel]
+    needs: [deploy-frontend-vercel]
     runs-on: ubuntu-latest
     if: always() && github.ref == 'refs/heads/main'
     steps:
       - name: Deployment Status
         run: |
-          echo "Backend deployed to Back4app"
-          echo "Frontend deployed to Vercel"
-          echo "Deployment completed"
+          if [ "${{ needs.deploy-frontend-vercel.result }}" == "success" ]; then
+            echo "✅ Frontend deployed to Vercel successfully"
+            echo "Deployment completed"
+          else
+            echo "❌ Frontend deployment to Vercel failed"
+            echo "Check the logs for details"
+            exit 1
+          fi
