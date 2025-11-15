@@ -209,16 +209,16 @@ jobs:
   #         echo "=========================================="
   #         echo "✅ Validating Environment Variables"
   #         echo "=========================================="
-  #         
+  #
   #         MISSING_VARS=()
-  #         
+  #
   #         if [ -z "${{ secrets.VERCEL_TOKEN }}" ]; then
   #           MISSING_VARS+=("VERCEL_TOKEN")
   #           echo "❌ VERCEL_TOKEN is missing"
   #         else
   #           echo "✅ VERCEL_TOKEN is set (length: ${#VERCEL_TOKEN})"
   #         fi
-  #         
+  #
   #         # Check for VERCEL_USER_ID (for personal account) or VERCEL_ORG_ID (for team account)
   #         if [ -z "${{ secrets.VERCEL_USER_ID }}" ] && [ -z "${{ secrets.VERCEL_ORG_ID }}" ]; then
   #           MISSING_VARS+=("VERCEL_USER_ID or VERCEL_ORG_ID")
@@ -230,14 +230,14 @@ jobs:
   #             echo "✅ VERCEL_ORG_ID is set: ${{ secrets.VERCEL_ORG_ID }}"
   #           fi
   #         fi
-  #         
+  #
   #         if [ -z "${{ secrets.VERCEL_PROJECT_ID }}" ]; then
   #           MISSING_VARS+=("VERCEL_PROJECT_ID")
   #           echo "❌ VERCEL_PROJECT_ID is missing"
   #         else
   #           echo "✅ VERCEL_PROJECT_ID is set: ${{ secrets.VERCEL_PROJECT_ID }}"
   #         fi
-  #         
+  #
   #         if [ -z "${{ secrets.VITE_API_URL }}" ] && [ -z "${{ secrets.BACK4APP_BACKEND_URL }}" ] && [ -z "${{ secrets.RAILWAY_BACKEND_URL }}" ]; then
   #           echo "⚠️  WARNING: VITE_API_URL, BACK4APP_BACKEND_URL, and RAILWAY_BACKEND_URL are all missing"
   #           echo "   Using default: https://your-backend.back4app.io"
@@ -245,7 +245,7 @@ jobs:
   #           API_URL="${{ secrets.VITE_API_URL || secrets.BACK4APP_BACKEND_URL || secrets.RAILWAY_BACKEND_URL }}"
   #           echo "✅ API URL is set: $API_URL"
   #         fi
-  #         
+  #
   #         echo ""
   #         if [ ${#MISSING_VARS[@]} -gt 0 ]; then
   #           echo "=========================================="
@@ -268,7 +268,7 @@ jobs:
   #           echo "=========================================="
   #           exit 1
   #         fi
-  #         
+  #
   #         echo "✅ All required environment variables are set"
   #         echo "=========================================="
   #         echo ""
@@ -411,16 +411,16 @@ jobs:
           echo "=========================================="
           echo "✅ Validating Environment Variables"
           echo "=========================================="
-          
+
           MISSING_VARS=()
-          
+
           if [ -z "${{ secrets.VERCEL_TOKEN }}" ]; then
             MISSING_VARS+=("VERCEL_TOKEN")
             echo "❌ VERCEL_TOKEN is missing"
           else
             echo "✅ VERCEL_TOKEN is set (length: ${#VERCEL_TOKEN})"
           fi
-          
+
           # Check for VERCEL_USER_ID (for personal account) or VERCEL_ORG_ID (for team account)
           if [ -z "${{ secrets.VERCEL_USER_ID }}" ] && [ -z "${{ secrets.VERCEL_ORG_ID }}" ]; then
             MISSING_VARS+=("VERCEL_USER_ID or VERCEL_ORG_ID")
@@ -432,14 +432,14 @@ jobs:
               echo "✅ VERCEL_ORG_ID is set: ${{ secrets.VERCEL_ORG_ID }}"
             fi
           fi
-          
+
           if [ -z "${{ secrets.VERCEL_PROJECT_ID }}" ] || [ "${{ secrets.VERCEL_PROJECT_ID }}" = "dummy" ] || [ "${{ secrets.VERCEL_PROJECT_ID }}" = "placeholder" ]; then
             echo "⚠️  VERCEL_PROJECT_ID is not set (will auto-create project on first deploy)"
             echo "   You can set it to 'dummy' or leave it empty for auto-create"
           else
             echo "✅ VERCEL_PROJECT_ID is set: ${{ secrets.VERCEL_PROJECT_ID }}"
           fi
-          
+
           # Check backend environment variables
           if [ -z "${{ secrets.MONGODB_URI }}" ]; then
             echo "⚠️  WARNING: MONGODB_URI is not set"
@@ -447,20 +447,20 @@ jobs:
           else
             echo "✅ MONGODB_URI is set"
           fi
-          
+
           if [ -z "${{ secrets.JWT_SECRET }}" ]; then
             echo "⚠️  WARNING: JWT_SECRET is not set"
             echo "   Authentication will not work properly"
           else
             echo "✅ JWT_SECRET is set"
           fi
-          
+
           if [ -n "${{ secrets.JWT_EXPIRES_IN }}" ]; then
             echo "✅ JWT_EXPIRES_IN is set: ${{ secrets.JWT_EXPIRES_IN }}"
           else
             echo "ℹ️  JWT_EXPIRES_IN not set, using default: 7d"
           fi
-          
+
           echo ""
           if [ ${#MISSING_VARS[@]} -gt 0 ]; then
             echo "=========================================="
@@ -487,7 +487,7 @@ jobs:
             echo "=========================================="
             exit 1
           fi
-          
+
           echo "✅ All required environment variables are set"
           echo "=========================================="
           echo ""
@@ -525,13 +525,13 @@ jobs:
           echo "🔍 Verifying Vercel Project"
           echo "=========================================="
           npm install -g vercel@latest
-          
+
           # Set environment variables for Vercel CLI
           export VERCEL_TOKEN="${{ secrets.VERCEL_TOKEN }}"
           export VERCEL_USER_ID="${{ secrets.VERCEL_USER_ID }}"
           export VERCEL_ORG_ID="${{ secrets.VERCEL_ORG_ID }}"
           export VERCEL_PROJECT_ID="${{ secrets.VERCEL_PROJECT_ID }}"
-          
+
           # Determine which scope to use
           if [ -n "$VERCEL_ORG_ID" ]; then
             SCOPE="$VERCEL_ORG_ID"
@@ -558,11 +558,11 @@ jobs:
             echo "   - Team ID: For team account projects"
             exit 1
           fi
-          
+
           echo "Scope type: $SCOPE_TYPE"
           echo "Project ID: $VERCEL_PROJECT_ID"
           echo ""
-          
+
           # Verify token and get account info
           echo "Verifying Vercel token and account access..."
           USER_INFO=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" "https://api.vercel.com/v2/user")
@@ -574,7 +574,7 @@ jobs:
             echo "Response: $USER_INFO"
             exit 1
           fi
-          
+
           # List available teams and user info
           echo ""
           echo "📋 Available scopes:"
@@ -582,7 +582,7 @@ jobs:
           if [ -n "$VERCEL_ORG_ID" ]; then
             echo "Team ID: $VERCEL_ORG_ID"
           fi
-          
+
           # Try to list teams and extract first team ID if available
           TEAMS_RESPONSE=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" "https://api.vercel.com/v2/teams")
           FIRST_TEAM_ID=""
@@ -597,10 +597,10 @@ jobs:
             fi
           fi
           echo ""
-          
+
           # Check if project exists
           echo "Checking if project exists..."
-          
+
           # If VERCEL_PROJECT_ID is empty or "dummy", treat as not exists
           if [ -z "$VERCEL_PROJECT_ID" ] || [ "$VERCEL_PROJECT_ID" = "dummy" ] || [ "$VERCEL_PROJECT_ID" = "placeholder" ]; then
             PROJECT_EXISTS="no"
@@ -693,7 +693,7 @@ jobs:
               echo "VERCEL_ORG_ID=$SCOPE" >> $GITHUB_ENV
             fi
           fi
-          
+
           if [ "$PROJECT_EXISTS" = "no" ]; then
             echo ""
             echo "⚠️  Project not found. Creating new project..."
@@ -720,8 +720,7 @@ jobs:
                   \"type\": \"github\",
                   \"repo\": \"${{ github.repository }}\",
                   \"productionBranch\": \"main\"
-                },
-                  \"rootDirectory\": \"apps/backend\"
+                }
               }")
             
             # Check if creation was successful
@@ -747,11 +746,49 @@ jobs:
             fi
           else
             echo "✅ Project exists"
+            echo ""
+            echo "🔧 Checking and updating project root directory settings..."
+            # Update project to remove root directory (we use working-directory in deployment instead)
+            UPDATE_URL="https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID"
+            if [ "$SCOPE_TYPE" = "Team" ]; then
+              UPDATE_URL="$UPDATE_URL?teamId=$SCOPE"
+            fi
+            
+            # Get current project settings
+            CURRENT_PROJECT=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" "$UPDATE_URL")
+            CURRENT_ROOT_DIR=$(echo "$CURRENT_PROJECT" | grep -o '"rootDirectory":"[^"]*' | cut -d'"' -f4 || echo "")
+            
+            if [ -n "$CURRENT_ROOT_DIR" ]; then
+              echo "⚠️  Project has root directory set to: $CURRENT_ROOT_DIR"
+              echo "   Removing root directory (using working-directory in deployment instead)..."
+              
+              # Update project to remove root directory
+              UPDATE_RESPONSE=$(curl -s -X PATCH "$UPDATE_URL" \
+                -H "Authorization: Bearer $VERCEL_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d "{
+                  \"rootDirectory\": null
+                }")
+              
+              if echo "$UPDATE_RESPONSE" | grep -q "\"id\""; then
+                echo "✅ Root directory removed successfully"
+              else
+                echo "⚠️  Could not remove root directory via API"
+                echo "   Response: $UPDATE_RESPONSE"
+                echo ""
+                echo "💡 Manual fix required:"
+                echo "   1. Go to Vercel Dashboard > Project Settings > General"
+                echo "   2. Clear the 'Root Directory' field (leave it empty)"
+                echo "   3. Save settings"
+              fi
+            else
+              echo "✅ Root directory is not set (correct)"
+            fi
           fi
-          
+
           # Export final scope for deployment
           echo "VERCEL_ORG_ID=$SCOPE" >> $GITHUB_ENV
-          
+
           echo ""
           echo "✅ Project ready for deployment"
           echo "Using scope: $SCOPE ($SCOPE_TYPE)"
@@ -856,10 +893,19 @@ jobs:
           echo "   - Check Vercel dashboard for error messages"
           echo ""
           echo "7. Common Issues:"
+          echo "   - Root Directory Error:"
+          echo "     * Error: 'The specified Root Directory does not exist'"
+          echo "     * Solution: Clear Root Directory in Vercel Project Settings"
+          echo "     * Steps:"
+          echo "       1. Go to Vercel Dashboard > Your Project > Settings > General"
+          echo "       2. Find 'Root Directory' field"
+          echo "       3. Clear/delete the value (leave it empty)"
+          echo "       4. Save settings"
+          echo "     * Note: Workflow uses 'working-directory' parameter, so root directory should be empty"
           echo "   - Project not found:"
           echo "     * Project must be created in Vercel first"
           echo "     * Go to https://vercel.com/new and import repository"
-          echo "     * Set root directory to: apps/backend"
+          echo "     * DO NOT set root directory (leave it empty)"
           echo "     * Deploy once manually, then copy Project ID"
           echo "   - Invalid token: Regenerate at https://vercel.com/account/tokens"
           echo "   - Wrong User ID: Check Vercel Dashboard > Settings > General"
