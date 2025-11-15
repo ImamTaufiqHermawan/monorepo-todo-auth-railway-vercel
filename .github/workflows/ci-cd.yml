@@ -649,7 +649,7 @@ jobs:
                   PROJECT_INFO_TEAM=$(vercel projects inspect "$VERCEL_PROJECT_ID" --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" 2>&1)
                   TEAM_EXIT_CODE=$?
                   set -e
-                  i f [ $TEAM_EXIT_CODE -eq 0 ] && ! echo "$PROJECT_INFO_TEAM" | grep -q "Project not found\|not found\|404\|Error"; then
+                  if [ $TEAM_EXIT_CODE -eq 0 ] && ! echo "$PROJECT_INFO_TEAM" | grep -q "Project not found\|not found\|404\|Error"; then
                     echo "✅ Project found with Team ID from secrets! Updating scope..."
                     SCOPE="$VERCEL_ORG_ID"
                     SCOPE_TYPE="Team"
@@ -697,7 +697,7 @@ jobs:
           if [ "$PROJECT_EXISTS" = "no" ]; then
             echo ""
             echo "⚠️  Project not found. Creating new project..."
-            echo ""
+          echo ""
             
             # Get project name from repository
             PROJECT_NAME="${{ github.event.repository.name }}-backend"
@@ -721,7 +721,7 @@ jobs:
                   \"repo\": \"${{ github.repository }}\",
                   \"productionBranch\": \"main\"
                 },
-                \"rootDirectory\": \"apps/backend\"
+                  \"rootDirectory\": \"apps/backend\"
               }")
             
             # Check if creation was successful
@@ -893,7 +893,7 @@ jobs:
         run: |
           if [ "${{ needs.deploy-backend-vercel.result }}" == "success" ]; then
             echo "✅ Backend deployed to Vercel successfully"
-            echo "Deployment completed"
+          echo "Deployment completed"
           else
             echo "❌ Backend deployment to Vercel failed"
             echo "Check the logs for details"
