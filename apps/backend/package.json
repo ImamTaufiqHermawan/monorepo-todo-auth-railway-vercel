@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch src/index.js",
-    "build": "echo 'No build step needed for Node.js'",
+    "build": "mkdir -p dist && echo 'No build step needed for Node.js' > dist/.build-complete",
     "start": "node src/index.js",
     "test": "node --test tests/**/*.test.js",
     "test:unit": "node --test tests/unit/**/*.test.js",
