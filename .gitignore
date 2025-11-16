@@ -19,6 +19,8 @@ out/
 .env.development.local
 .env.test.local
 .env.production.local
+# Allow .env.example files
+!.env.example
 
 # Logs
 logs
@@ -55,4 +57,7 @@ Thumbs.db
 
 # Railway
 .railway
+
+# Documentation (exclude from git but keep locally)
+docs/
 

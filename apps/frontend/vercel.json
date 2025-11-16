@@ -1,4 +1,10 @@
 {
+  "version": 2,
+  "git": {
+    "deploymentEnabled": {
+      "main": false
+    }
+  },
   "buildCommand": "pnpm build",
   "outputDirectory": "dist",
   "devCommand": "pnpm dev",
