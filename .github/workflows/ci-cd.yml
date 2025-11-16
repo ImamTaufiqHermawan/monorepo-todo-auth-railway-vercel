@@ -15,8 +15,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
           cache: "pnpm"
-      - run: npm install -g pnpm@latest
       - name: Install dependencies
         run: |
           if [ -f "pnpm-lock.yaml" ]; then
@@ -36,8 +42,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
           cache: "pnpm"
-      - run: npm install -g pnpm@latest
       - name: Install dependencies
         run: |
           echo "=========================================="
@@ -163,6 +175,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
           cache: "pnpm"
 
       - name: 📦 Install Dependencies
@@ -170,7 +189,6 @@ jobs:
           echo "=========================================="
           echo "📦 Installing Dependencies"
           echo "=========================================="
-          npm install -g pnpm@latest
           pnpm --version
           echo ""
           echo "Installing dependencies from root..."
@@ -603,6 +621,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
           cache: "pnpm"
 
       - name: 📦 Install Dependencies
@@ -610,7 +635,6 @@ jobs:
           echo "=========================================="
           echo "📦 Installing Dependencies"
           echo "=========================================="
-          npm install -g pnpm@latest
           pnpm --version
           echo ""
           echo "Installing dependencies from root..."
@@ -620,9 +644,6 @@ jobs:
             echo "⚠️  No pnpm-lock.yaml found, installing without frozen lockfile..."
             pnpm install
           fi
-          echo ""
-          echo "Verifying frontend dependencies..."
-          ls -la apps/frontend/node_modules/.bin/ | head -5 || echo "No node_modules in frontend (using workspace root)"
           echo ""
           echo "✅ Dependencies installed successfully"
           echo "=========================================="
