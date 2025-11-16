@@ -22,7 +22,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "pnpm"
       - name: Install dependencies
         run: |
           if [ -f "pnpm-lock.yaml" ]; then
@@ -49,7 +48,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "pnpm"
       - name: Install dependencies
         run: |
           echo "=========================================="
@@ -182,7 +180,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "pnpm"
 
       - name: 📦 Install Dependencies
         run: |
@@ -628,7 +625,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "pnpm"
 
       - name: 📦 Install Dependencies
         run: |
