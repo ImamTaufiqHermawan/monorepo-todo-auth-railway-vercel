@@ -5,7 +5,7 @@
       "main": false
     }
   },
-  "buildCommand": "pnpm build",
+  "buildCommand": "cd ../.. && pnpm --filter frontend build",
   "outputDirectory": "dist",
   "devCommand": "pnpm dev",
   "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
