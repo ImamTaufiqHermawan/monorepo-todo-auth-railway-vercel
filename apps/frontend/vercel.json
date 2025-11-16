@@ -6,9 +6,9 @@
     }
   },
   "buildCommand": "pnpm --filter frontend build",
-  "outputDirectory": "dist",
+  "outputDirectory": "apps/frontend/dist",
   "devCommand": "pnpm dev",
-  "installCommand": "pnpm install",
+  "installCommand": "pnpm install --frozen-lockfile",
   "framework": "vite",
   "rewrites": [
     {
