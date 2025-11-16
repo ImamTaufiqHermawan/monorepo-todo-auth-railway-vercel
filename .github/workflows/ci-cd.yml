@@ -278,7 +278,21 @@ jobs:
             fi
             
             LIST_RESPONSE=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" "$LIST_URL")
-            EXISTING_PROJECT_ID=$(echo "$LIST_RESPONSE" | grep -o "\"name\":\"$PROJECT_NAME\"[^}]*\"id\":\"[^\"]*" | grep -o "\"id\":\"[^\"]*" | cut -d'"' -f4 | head -1)
+            
+            # Try to parse JSON response to find project by name
+            # First try with jq if available, otherwise use grep/sed
+            if command -v jq &> /dev/null; then
+              EXISTING_PROJECT_ID=$(echo "$LIST_RESPONSE" | jq -r ".projects[] | select(.name == \"$PROJECT_NAME\") | .id" | head -1)
+            else
+              # Fallback: use grep and sed to extract project ID
+              # Look for the project name and extract the ID from the same object
+              EXISTING_PROJECT_ID=$(echo "$LIST_RESPONSE" | grep -A 20 "\"name\":\"$PROJECT_NAME\"" | grep -o "\"id\":\"[^\"]*" | head -1 | cut -d'"' -f4)
+            fi
+            
+            if [ -z "$EXISTING_PROJECT_ID" ] || [ "$EXISTING_PROJECT_ID" = "null" ]; then
+              # Try alternative method: search in projects array
+              EXISTING_PROJECT_ID=$(echo "$LIST_RESPONSE" | grep -o "\"name\":\"$PROJECT_NAME\"" -A 5 | grep -o "\"id\":\"[^\"]*" | head -1 | cut -d'"' -f4)
+            fi
             
             if [ -n "$EXISTING_PROJECT_ID" ]; then
               echo "✅ Found existing frontend project!"
@@ -334,7 +348,19 @@ jobs:
                 echo "⚠️  Project already exists (conflict). Searching again..."
                 # Try to find it again after creation attempt
                 LIST_RESPONSE=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" "$LIST_URL")
-                EXISTING_PROJECT_ID=$(echo "$LIST_RESPONSE" | grep -o "\"name\":\"$PROJECT_NAME\"[^}]*\"id\":\"[^\"]*" | grep -o "\"id\":\"[^\"]*" | cut -d'"' -f4 | head -1)
+                
+                # Try to parse JSON response to find project by name
+                if command -v jq &> /dev/null; then
+                  EXISTING_PROJECT_ID=$(echo "$LIST_RESPONSE" | jq -r ".projects[] | select(.name == \"$PROJECT_NAME\") | .id" | head -1)
+                else
+                  # Fallback: use grep and sed to extract project ID
+                  EXISTING_PROJECT_ID=$(echo "$LIST_RESPONSE" | grep -A 20 "\"name\":\"$PROJECT_NAME\"" | grep -o "\"id\":\"[^\"]*" | head -1 | cut -d'"' -f4)
+                fi
+                
+                if [ -z "$EXISTING_PROJECT_ID" ] || [ "$EXISTING_PROJECT_ID" = "null" ]; then
+                  # Try alternative method: search in projects array
+                  EXISTING_PROJECT_ID=$(echo "$LIST_RESPONSE" | grep -o "\"name\":\"$PROJECT_NAME\"" -A 5 | grep -o "\"id\":\"[^\"]*" | head -1 | cut -d'"' -f4)
+                fi
                 
                 if [ -n "$EXISTING_PROJECT_ID" ]; then
                   echo "✅ Found existing frontend project after conflict!"
@@ -440,8 +466,8 @@ jobs:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ env.VERCEL_ORG_ID || secrets.VERCEL_ORG_ID || secrets.VERCEL_USER_ID }}
           vercel-project-id: ${{ env.VERCEL_FRONTEND_PROJECT_ID || secrets.VERCEL_FRONTEND_PROJECT_ID }}
-          vercel-args: "--prod"
-          working-directory: ./apps/frontend
+          vercel-args: "--prod --cwd=."
+          working-directory: .
           scope: ${{ env.VERCEL_ORG_ID || secrets.VERCEL_ORG_ID || secrets.VERCEL_USER_ID }}
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}

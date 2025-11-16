@@ -5,8 +5,8 @@
       "main": false
     }
   },
-  "buildCommand": "pnpm build",
-  "outputDirectory": "dist",
+  "buildCommand": "pnpm --filter frontend build",
+  "outputDirectory": "apps/frontend/dist",
   "devCommand": "pnpm dev",
   "installCommand": "pnpm install",
   "framework": "vite",
@@ -28,4 +28,3 @@
     }
   ]
 }
-
