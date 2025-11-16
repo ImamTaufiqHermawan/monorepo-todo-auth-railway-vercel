@@ -15,9 +15,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "npm"
-      - run: npm install -g pnpm
-      - run: pnpm install
+          cache: "pnpm"
+      - run: npm install -g pnpm@latest
+      - name: Install dependencies
+        run: |
+          if [ -f "pnpm-lock.yaml" ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install
+          fi
       - run: pnpm test || true
 
   build-frontend:
@@ -30,11 +36,36 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "npm"
-      - run: npm install -g pnpm
-      - run: pnpm install
+          cache: "pnpm"
+      - run: npm install -g pnpm@latest
+      - name: Install dependencies
+        run: |
+          echo "=========================================="
+          echo "📦 Installing Dependencies"
+          echo "=========================================="
+          if [ -f "pnpm-lock.yaml" ]; then
+            echo "Found pnpm-lock.yaml, using frozen lockfile..."
+            pnpm install --frozen-lockfile
+          else
+            echo "⚠️  No pnpm-lock.yaml found, installing without frozen lockfile..."
+            pnpm install
+          fi
+          echo ""
+          echo "Verifying vite installation..."
+          pnpm --filter frontend exec vite --version || echo "Vite not found in frontend, checking root..."
+          echo ""
+          echo "✅ Dependencies installed successfully"
+          echo "=========================================="
+          echo ""
       - name: Build frontend
-        run: pnpm --filter frontend build
+        run: |
+          echo "=========================================="
+          echo "🔨 Building Frontend"
+          echo "=========================================="
+          pnpm --filter frontend build
+          echo ""
+          echo "✅ Build completed successfully"
+          echo "=========================================="
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
@@ -132,14 +163,29 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: "pnpm"
 
       - name: 📦 Install Dependencies
         run: |
           echo "=========================================="
           echo "📦 Installing Dependencies"
           echo "=========================================="
-          npm install -g pnpm
+          npm install -g pnpm@latest
           pnpm --version
+          echo ""
+          echo "Installing dependencies from root..."
+          if [ -f "pnpm-lock.yaml" ]; then
+            pnpm install --frozen-lockfile
+          else
+            echo "⚠️  No pnpm-lock.yaml found, installing without frozen lockfile..."
+            pnpm install
+          fi
+          echo ""
+          echo "Verifying frontend dependencies..."
+          ls -la apps/frontend/node_modules/.bin/ | head -5 || echo "No node_modules in frontend (using workspace root)"
+          echo ""
+          echo "✅ Dependencies installed successfully"
+          echo "=========================================="
           echo ""
 
       - name: 🔍 Verify and Create Vercel Frontend Project
@@ -300,16 +346,17 @@ jobs:
           echo "=========================================="
           echo ""
 
-      - name: 🔨 Build Frontend
+      - name: 🔨 Build Frontend (for verification)
         run: |
           echo "=========================================="
-          echo "🔨 Building Frontend"
+          echo "🔨 Building Frontend (verification)"
           echo "=========================================="
-          cd apps/frontend
-          pnpm install
-          pnpm build
+          echo "Note: Vercel will build during deployment"
+          echo "This build is for verification only"
           echo ""
-          echo "✅ Build completed successfully"
+          pnpm --filter frontend build
+          echo ""
+          echo "✅ Build verification completed"
           echo "=========================================="
           echo ""
         env:
@@ -556,25 +603,41 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: "pnpm"
 
       - name: 📦 Install Dependencies
         run: |
           echo "=========================================="
           echo "📦 Installing Dependencies"
           echo "=========================================="
-          npm install -g pnpm
+          npm install -g pnpm@latest
           pnpm --version
           echo ""
-
-      - name: 🔨 Install Backend Dependencies
-        run: |
-          echo "=========================================="
-          echo "🔨 Installing Backend Dependencies"
-          echo "=========================================="
-          cd apps/backend
-          pnpm install
+          echo "Installing dependencies from root..."
+          if [ -f "pnpm-lock.yaml" ]; then
+            pnpm install --frozen-lockfile
+          else
+            echo "⚠️  No pnpm-lock.yaml found, installing without frozen lockfile..."
+            pnpm install
+          fi
+          echo ""
+          echo "Verifying frontend dependencies..."
+          ls -la apps/frontend/node_modules/.bin/ | head -5 || echo "No node_modules in frontend (using workspace root)"
           echo ""
           echo "✅ Dependencies installed successfully"
+          echo "=========================================="
+          echo ""
+
+      - name: 🔨 Verify Backend Setup
+        run: |
+          echo "=========================================="
+          echo "🔨 Verifying Backend Setup"
+          echo "=========================================="
+          echo "Checking backend structure..."
+          ls -la apps/backend/
+          echo ""
+          echo "✅ Backend structure verified"
+          echo "Note: Vercel will handle dependencies during deployment"
           echo "=========================================="
           echo ""
 
