@@ -405,31 +405,31 @@ jobs:
             CURRENT_PROJECT=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" "$UPDATE_URL")
             CURRENT_ROOT_DIR=$(echo "$CURRENT_PROJECT" | grep -o '"rootDirectory":"[^"]*' | cut -d'"' -f4 || echo "")
             
-            if [ "$CURRENT_ROOT_DIR" != "apps/frontend" ]; then
-              echo "⚠️  Frontend project root directory is: ${CURRENT_ROOT_DIR:-'(not set)'}"
-              echo "   Setting root directory to: apps/frontend"
+            if [ -n "$CURRENT_ROOT_DIR" ] && [ "$CURRENT_ROOT_DIR" != "" ]; then
+              echo "⚠️  Frontend project has root directory set to: $CURRENT_ROOT_DIR"
+              echo "   Removing root directory (using root project instead)..."
               
-              # Update project to set root directory
+              # Update project to remove root directory
               UPDATE_RESPONSE=$(curl -s -X PATCH "$UPDATE_URL" \
                 -H "Authorization: Bearer $VERCEL_TOKEN" \
                 -H "Content-Type: application/json" \
                 -d "{
-                  \"rootDirectory\": \"apps/frontend\"
+                  \"rootDirectory\": null
                 }")
               
               if echo "$UPDATE_RESPONSE" | grep -q "\"id\""; then
-                echo "✅ Root directory set to apps/frontend successfully"
+                echo "✅ Root directory removed successfully"
               else
-                echo "⚠️  Could not set root directory via API"
+                echo "⚠️  Could not remove root directory via API"
                 echo "   Response: $UPDATE_RESPONSE"
                 echo ""
                 echo "💡 Manual fix required:"
                 echo "   1. Go to Vercel Dashboard > Frontend Project Settings > General"
-                echo "   2. Set 'Root Directory' to: apps/frontend"
+                echo "   2. Clear the 'Root Directory' field (leave it empty)"
                 echo "   3. Save settings"
               fi
             else
-              echo "✅ Root directory is already set to apps/frontend (correct)"
+              echo "✅ Root directory is not set (correct - will use root project)"
             fi
           fi
 
@@ -467,7 +467,7 @@ jobs:
           vercel-org-id: ${{ env.VERCEL_ORG_ID || secrets.VERCEL_ORG_ID || secrets.VERCEL_USER_ID }}
           vercel-project-id: ${{ env.VERCEL_FRONTEND_PROJECT_ID || secrets.VERCEL_FRONTEND_PROJECT_ID }}
           vercel-args: "--prod"
-          working-directory: ./apps/frontend
+          working-directory: .
           scope: ${{ env.VERCEL_ORG_ID || secrets.VERCEL_ORG_ID || secrets.VERCEL_USER_ID }}
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
