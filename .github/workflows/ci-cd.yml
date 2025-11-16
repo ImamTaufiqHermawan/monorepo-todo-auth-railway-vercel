@@ -265,53 +265,105 @@ jobs:
 
           if [ "$PROJECT_EXISTS" = "no" ]; then
             echo ""
-            echo "⚠️  Frontend project not found. Creating new project..."
-            echo ""
-            
             # Get project name from repository
             PROJECT_NAME="${{ github.event.repository.name }}-frontend"
             echo "Frontend project name: $PROJECT_NAME"
+            echo ""
             
-            # Create project using Vercel API with correct scope
-            echo "Creating frontend project via Vercel API with scope: $SCOPE ($SCOPE_TYPE)..."
-            CREATE_URL="https://api.vercel.com/v9/projects"
+            # First, try to find existing project by name
+            echo "🔍 Searching for existing project by name: $PROJECT_NAME"
+            LIST_URL="https://api.vercel.com/v9/projects"
             if [ "$SCOPE_TYPE" = "Team" ]; then
-              CREATE_URL="$CREATE_URL?teamId=$SCOPE"
+              LIST_URL="$LIST_URL?teamId=$SCOPE"
             fi
             
-            CREATE_RESPONSE=$(curl -s -X POST "$CREATE_URL" \
-              -H "Authorization: Bearer $VERCEL_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d "{
-                \"name\": \"$PROJECT_NAME\",
-                \"framework\": \"vite\",
-                \"gitRepository\": {
-                  \"type\": \"github\",
-                  \"repo\": \"${{ github.repository }}\",
-                  \"productionBranch\": \"main\"
-                }
-              }")
+            LIST_RESPONSE=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" "$LIST_URL")
+            EXISTING_PROJECT_ID=$(echo "$LIST_RESPONSE" | grep -o "\"name\":\"$PROJECT_NAME\"[^}]*\"id\":\"[^\"]*" | grep -o "\"id\":\"[^\"]*" | cut -d'"' -f4 | head -1)
             
-            # Check if creation was successful
-            if echo "$CREATE_RESPONSE" | grep -q "\"id\""; then
-              NEW_PROJECT_ID=$(echo "$CREATE_RESPONSE" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
-              echo "✅ Frontend project created successfully!"
-              echo "   New Frontend Project ID: $NEW_PROJECT_ID"
+            if [ -n "$EXISTING_PROJECT_ID" ]; then
+              echo "✅ Found existing frontend project!"
+              echo "   Project ID: $EXISTING_PROJECT_ID"
               echo ""
               echo "⚠️  IMPORTANT: Update VERCEL_FRONTEND_PROJECT_ID in GitHub Secrets:"
               echo "   Go to: Repository Settings > Secrets > Actions"
-              echo "   Update VERCEL_FRONTEND_PROJECT_ID to: $NEW_PROJECT_ID"
+              echo "   Update VERCEL_FRONTEND_PROJECT_ID to: $EXISTING_PROJECT_ID"
               echo ""
-              echo "   For now, using the new project ID for this deployment..."
-              # Export new project ID for this run
-              echo "VERCEL_FRONTEND_PROJECT_ID=$NEW_PROJECT_ID" >> $GITHUB_ENV
+              echo "   For now, using the existing project ID for this deployment..."
+              echo "VERCEL_FRONTEND_PROJECT_ID=$EXISTING_PROJECT_ID" >> $GITHUB_ENV
+              echo "VERCEL_ORG_ID=$SCOPE" >> $GITHUB_ENV
+              PROJECT_EXISTS="yes"
             else
-              echo "❌ Failed to create frontend project"
-              echo "Response: $CREATE_RESPONSE"
+              echo "⚠️  Project not found. Creating new project..."
               echo ""
-              echo "💡 Alternative: Create project manually at https://vercel.com/new"
-              echo "   Then update VERCEL_FRONTEND_PROJECT_ID in GitHub Secrets"
-              exit 1
+              
+              # Create project using Vercel API with correct scope
+              echo "Creating frontend project via Vercel API with scope: $SCOPE ($SCOPE_TYPE)..."
+              CREATE_URL="https://api.vercel.com/v9/projects"
+              if [ "$SCOPE_TYPE" = "Team" ]; then
+                CREATE_URL="$CREATE_URL?teamId=$SCOPE"
+              fi
+              
+              CREATE_RESPONSE=$(curl -s -X POST "$CREATE_URL" \
+                -H "Authorization: Bearer $VERCEL_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d "{
+                  \"name\": \"$PROJECT_NAME\",
+                  \"framework\": \"vite\",
+                  \"gitRepository\": {
+                    \"type\": \"github\",
+                    \"repo\": \"${{ github.repository }}\",
+                    \"productionBranch\": \"main\"
+                  }
+                }")
+              
+              # Check if creation was successful or if project already exists
+              if echo "$CREATE_RESPONSE" | grep -q "\"id\""; then
+                NEW_PROJECT_ID=$(echo "$CREATE_RESPONSE" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
+                echo "✅ Frontend project created successfully!"
+                echo "   New Frontend Project ID: $NEW_PROJECT_ID"
+                echo ""
+                echo "⚠️  IMPORTANT: Update VERCEL_FRONTEND_PROJECT_ID in GitHub Secrets:"
+                echo "   Go to: Repository Settings > Secrets > Actions"
+                echo "   Update VERCEL_FRONTEND_PROJECT_ID to: $NEW_PROJECT_ID"
+                echo ""
+                echo "   For now, using the new project ID for this deployment..."
+                echo "VERCEL_FRONTEND_PROJECT_ID=$NEW_PROJECT_ID" >> $GITHUB_ENV
+                echo "VERCEL_ORG_ID=$SCOPE" >> $GITHUB_ENV
+                PROJECT_EXISTS="yes"
+              elif echo "$CREATE_RESPONSE" | grep -q "already exists\|conflict"; then
+                echo "⚠️  Project already exists (conflict). Searching again..."
+                # Try to find it again after creation attempt
+                LIST_RESPONSE=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" "$LIST_URL")
+                EXISTING_PROJECT_ID=$(echo "$LIST_RESPONSE" | grep -o "\"name\":\"$PROJECT_NAME\"[^}]*\"id\":\"[^\"]*" | grep -o "\"id\":\"[^\"]*" | cut -d'"' -f4 | head -1)
+                
+                if [ -n "$EXISTING_PROJECT_ID" ]; then
+                  echo "✅ Found existing frontend project after conflict!"
+                  echo "   Project ID: $EXISTING_PROJECT_ID"
+                  echo ""
+                  echo "⚠️  IMPORTANT: Update VERCEL_FRONTEND_PROJECT_ID in GitHub Secrets:"
+                  echo "   Go to: Repository Settings > Secrets > Actions"
+                  echo "   Update VERCEL_FRONTEND_PROJECT_ID to: $EXISTING_PROJECT_ID"
+                  echo ""
+                  echo "   For now, using the existing project ID for this deployment..."
+                  echo "VERCEL_FRONTEND_PROJECT_ID=$EXISTING_PROJECT_ID" >> $GITHUB_ENV
+                  echo "VERCEL_ORG_ID=$SCOPE" >> $GITHUB_ENV
+                  PROJECT_EXISTS="yes"
+                else
+                  echo "❌ Failed to find existing project after conflict"
+                  echo "Response: $CREATE_RESPONSE"
+                  echo ""
+                  echo "💡 Please manually get the project ID from Vercel Dashboard"
+                  echo "   Then update VERCEL_FRONTEND_PROJECT_ID in GitHub Secrets"
+                  exit 1
+                fi
+              else
+                echo "❌ Failed to create frontend project"
+                echo "Response: $CREATE_RESPONSE"
+                echo ""
+                echo "💡 Alternative: Create project manually at https://vercel.com/new"
+                echo "   Then update VERCEL_FRONTEND_PROJECT_ID in GitHub Secrets"
+                exit 1
+              fi
             fi
           else
             echo "✅ Frontend project exists"
