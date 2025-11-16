@@ -5,10 +5,10 @@
       "main": false
     }
   },
-  "buildCommand": "pnpm --filter @todo/frontend run build",
-  "outputDirectory": "apps/frontend/dist",
+  "buildCommand": "pnpm build",
+  "outputDirectory": "dist",
   "devCommand": "pnpm dev",
-  "installCommand": "pnpm install --frozen-lockfile",
+  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
   "framework": "vite",
   "rewrites": [
     {
