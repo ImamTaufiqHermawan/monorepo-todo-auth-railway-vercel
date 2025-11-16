@@ -185,7 +185,7 @@ pnpm --filter backend test
    - **Git > Auto Deploy:** **DISABLE** (matikan auto deploy)
 7. Deploy sekali secara manual
 8. Copy **Project ID** dari Settings > General
-9. Add ke GitHub Secrets: `VERCEL_PROJECT_ID`
+9. Add ke GitHub Secrets: `VERCEL_BACKEND_PROJECT_ID`
 
 ### Step 3: Manual Deploy Pertama Kali (Frontend)
 
@@ -214,7 +214,7 @@ Go to GitHub Repository > Settings > Secrets and variables > Actions:
 **Required Secrets:**
 - `VERCEL_TOKEN` - Get dari https://vercel.com/account/tokens
 - `VERCEL_USER_ID` - Get dari Vercel Dashboard > Settings > General (User ID)
-- `VERCEL_PROJECT_ID` - Backend Project ID dari Vercel
+- `VERCEL_BACKEND_PROJECT_ID` - Backend Project ID dari Vercel
 - `VERCEL_FRONTEND_PROJECT_ID` - Frontend Project ID dari Vercel
 
 **Optional Secrets (untuk backend):**

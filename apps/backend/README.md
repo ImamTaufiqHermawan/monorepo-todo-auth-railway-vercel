@@ -247,7 +247,7 @@ Response:
    - **Auto Deploy:** DISABLE (matikan)
 6. Deploy sekali manual
 7. Copy **Project ID** dari Settings > General
-8. Add ke GitHub Secrets: `VERCEL_PROJECT_ID`
+8. Add ke GitHub Secrets: `VERCEL_BACKEND_PROJECT_ID`
 
 ### Vercel Configuration
 
