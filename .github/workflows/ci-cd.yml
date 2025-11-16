@@ -74,7 +74,7 @@ jobs:
           echo "=========================================="
           echo "🔨 Building Frontend"
           echo "=========================================="
-          pnpm --filter frontend build
+          pnpm --filter frontend exec vite build
           echo ""
           echo "✅ Build completed successfully"
           echo "=========================================="
@@ -450,7 +450,7 @@ jobs:
           echo "Note: Vercel will build during deployment"
           echo "This build is for verification only"
           echo ""
-          pnpm --filter frontend build
+          pnpm --filter frontend exec vite build
           echo ""
           echo "✅ Build verification completed"
           echo "=========================================="
