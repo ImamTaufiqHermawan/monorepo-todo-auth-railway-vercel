@@ -5,7 +5,7 @@
       "main": false
     }
   },
-  "buildCommand": "cd ../.. && pnpm --filter frontend exec vite build",
+  "buildCommand": "cd ../.. && pnpm --filter @todo/frontend run build",
   "outputDirectory": "dist",
   "devCommand": "pnpm dev",
   "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
