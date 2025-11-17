@@ -21,12 +21,16 @@ router.use(authenticate);
  *         description: List of todos
  */
 router.get('/', async (req, res) => {
+  console.log(`[TODOS] GET / - User: ${req.user?._id}, Path: ${req.path}`);
   try {
     const todos = await Todo.find({ user: req.user._id }).sort({
       createdAt: -1,
     });
+    console.log(`[TODOS] Found ${todos.length} todos, sending response...`);
     res.json(todos);
+    console.log(`[TODOS] Response sent`);
   } catch (error) {
+    console.error(`[TODOS] Error:`, error);
     res.status(500).json({ error: error.message });
   }
 });

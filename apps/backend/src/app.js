@@ -53,6 +53,12 @@ const getSwaggerSpec = async () => {
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`[EXPRESS] ${req.method} ${req.path} - URL: ${req.url}`);
+  next();
+});
+
 // Handle favicon requests early
 app.get('/favicon.ico', (req, res) => {
   res.status(204).end();

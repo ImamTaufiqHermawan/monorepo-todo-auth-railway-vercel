@@ -314,16 +314,19 @@ export default async function handler(req, res) {
 
       // Now handle request with serverless-http
       console.log(`[REQ-${requestId}] [EXPRESS] Routing to Express handler...`);
+      console.log(
+        `[REQ-${requestId}] [EXPRESS] Request URL: ${req.url}, Path: ${req.path}, Method: ${req.method}`
+      );
       const expressStartTime = Date.now();
 
-      const handlerPromise = serverlessHandler(req, res);
-
-      handlerPromise
+      // Call serverlessHandler - it returns a promise
+      // The promise resolves when the response is sent
+      serverlessHandler(req, res)
         .then((result) => {
           const duration = Date.now() - startTime;
           const expressDuration = Date.now() - expressStartTime;
           console.log(
-            `[REQ-${requestId}] [EXPRESS] ✅ Handler completed in ${expressDuration}ms (total: ${duration}ms) | headersSent: ${res.headersSent} | responseCompleted: ${responseCompleted}`
+            `[REQ-${requestId}] [EXPRESS] ✅ Handler promise resolved in ${expressDuration}ms (total: ${duration}ms) | headersSent: ${res.headersSent} | responseCompleted: ${responseCompleted}`
           );
 
           // If response was already sent via our interceptors/events, don't do anything
@@ -335,12 +338,25 @@ export default async function handler(req, res) {
             return;
           }
 
-          // Check if headers were sent (response is in progress or complete)
+          // serverless-http promise should only resolve after response is sent
+          // But let's double-check and wait a bit to be sure
           if (res.headersSent) {
-            // Headers sent means response is being sent or already sent
-            // Wait a bit for it to complete, then resolve
+            // Headers sent - response should be complete
+            if (!responseSent) {
+              responseSent = true;
+              responseCompleted = true;
+              clearTimeout(timeout);
+              console.log(
+                `[REQ-${requestId}] ✅ Resolving after handler promise resolved (${
+                  Date.now() - startTime
+                }ms)`
+              );
+              resolve(result);
+            }
+          } else {
+            // Headers not sent - this is unusual, but wait a bit
             console.log(
-              `[REQ-${requestId}] Headers sent, waiting for response to complete...`
+              `[REQ-${requestId}] ⚠️ Handler promise resolved but headers not sent, waiting 100ms...`
             );
             setTimeout(() => {
               if (!responseSent) {
@@ -348,25 +364,13 @@ export default async function handler(req, res) {
                 responseCompleted = true;
                 clearTimeout(timeout);
                 console.log(
-                  `[REQ-${requestId}] ✅ Resolving after headers sent (${
+                  `[REQ-${requestId}] ✅ Resolving after wait (${
                     Date.now() - startTime
                   }ms)`
                 );
                 resolve(result);
               }
-            }, 50);
-          } else {
-            // Headers not sent - this shouldn't happen if handler completed successfully
-            // But resolve anyway to prevent hanging
-            console.log(
-              `[REQ-${requestId}] ⚠️ Handler completed but headers not sent, resolving anyway`
-            );
-            if (!responseSent) {
-              responseSent = true;
-              responseCompleted = true;
-              clearTimeout(timeout);
-              resolve(result);
-            }
+            }, 100);
           }
         })
         .catch((error) => {
