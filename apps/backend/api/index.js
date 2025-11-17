@@ -1,6 +1,7 @@
 // Vercel Serverless Function wrapper for Express app
 import app, { connectDB } from "../src/app.js";
 import serverless from "serverless-http";
+import mongoose from "mongoose";
 
 // Initialize serverless handler immediately (singleton)
 const serverlessHandler = serverless(app, {
@@ -10,21 +11,40 @@ const serverlessHandler = serverless(app, {
 // Connect to MongoDB in background (non-blocking, fire-and-forget)
 let connectionPromise = null;
 
-const ensureDBConnection = () => {
-  // Only start connection if not already connecting/connected
-  if (!connectionPromise) {
-    connectionPromise = connectDB()
-      .then(() => {
-        console.log("✅ MongoDB connected successfully");
-      })
-      .catch((error) => {
-        console.error("❌ Failed to connect to MongoDB:", error.message);
-        // Reset promise so we can retry on next request
-        connectionPromise = null;
-      });
+const ensureDBConnection = async () => {
+  // Check if already connected
+  if (mongoose.connection.readyState === 1) {
+    console.log("MongoDB already connected (readyState: 1)");
+    return;
   }
-  // Don't await - let it run in background
-  return connectionPromise;
+
+  // If already connecting, wait for it
+  if (connectionPromise) {
+    console.log("MongoDB connection in progress, waiting...");
+    try {
+      await connectionPromise;
+      return;
+    } catch (error) {
+      // Connection failed, reset and retry
+      connectionPromise = null;
+      throw error;
+    }
+  }
+
+  // Start new connection
+  connectionPromise = connectDB()
+    .then(() => {
+      console.log("✅ MongoDB connected successfully");
+    })
+    .catch((error) => {
+      console.error("❌ Failed to connect to MongoDB:", error.message);
+      // Reset promise so we can retry on next request
+      connectionPromise = null;
+      throw error;
+    });
+
+  // Wait for connection to complete
+  await connectionPromise;
 };
 
 // Vercel serverless function handler
@@ -110,12 +130,46 @@ export default async function handler(req, res) {
     });
   }
 
-  // Start DB connection in background (non-blocking) for other routes
-  ensureDBConnection();
-
+  // For routes that need database, wait for connection
+  // Routes that need DB: /api/auth, /api/todos, /api-docs (if enabled)
+  const needsDatabase = url.startsWith('/api/auth') || 
+                        url.startsWith('/api/todos') || 
+                        url.startsWith('/api-docs') ||
+                        url.startsWith('/health-checks');
+  
   // Handle request with Express via serverless-http
   // Wrap in Promise to ensure response is sent
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
+    // If route needs database, wait for connection
+    if (needsDatabase) {
+      try {
+        console.log(`Waiting for MongoDB connection for ${method} ${url}...`);
+        await ensureDBConnection();
+        console.log(`MongoDB connection ready for ${method} ${url}`);
+      } catch (error) {
+        console.error(`MongoDB connection failed for ${method} ${url}:`, error.message);
+        res.writeHead(503, {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        });
+        res.end(
+          JSON.stringify({
+            error: "Database connection failed",
+            message: "Unable to connect to database. Please try again later.",
+            path: url,
+            method: method,
+          }),
+          () => {
+            console.log(`Database error response sent for ${method} ${url}`);
+            resolve();
+          }
+        );
+        return;
+      }
+    } else {
+      // For other routes, start connection in background (non-blocking)
+      ensureDBConnection();
+    }
     let responseSent = false;
     const timeout = setTimeout(() => {
       if (!responseSent && !res.headersSent) {
