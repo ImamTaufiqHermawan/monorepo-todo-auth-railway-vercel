@@ -311,9 +311,6 @@ export const connectDB = async () => {
       connectTimeoutMS: 5000, // 5 seconds
       maxPoolSize: 1, // Single connection for serverless
       minPoolSize: 1,
-      // Optimize for serverless
-      bufferCommands: false, // Disable mongoose buffering
-      bufferMaxEntries: 0, // Disable mongoose buffering
     });
     isConnected = true;
     console.log("✅ Connected to MongoDB successfully");
