@@ -83,12 +83,7 @@ app.use((req, res, next) => {
     contentType: req.headers['content-type'] || 'none'
   });
   
-  // Don't intercept res.end - let serverless-http and api/index.js handle it
-  // Just log on finish event
-  res.on('finish', () => {
-    console.log(`[EXPRESS] Response finished: ${req.method} ${req.path} - Status: ${res.statusCode}`);
-  });
-  
+  // Don't intercept res.end here - api/index.js handles it
   next();
 });
 

@@ -186,6 +186,26 @@ export default async function handler(req, res) {
     const TIMEOUT_MS = 25000; // 25s timeout (Vercel max is 30s for hobby plan)
     let responseSent = false;
 
+    // CRITICAL: Intercept res.end FIRST before any other code touches it
+    // This must be done BEFORE timeout and BEFORE serverlessHandler
+    const originalEnd = res.end.bind(res);
+    res.end = function(...args) {
+      if (!responseSent) {
+        responseSent = true;
+        clearTimeout(timeout);
+        const duration = Date.now() - startTime;
+        console.log(
+          `[REQ-${requestId}] ✅ [RES.END] Response sent: ${duration}ms | ${method} ${url} | Status: ${res.statusCode}`
+        );
+        // Call original end
+        const result = originalEnd.apply(this, args);
+        // Resolve immediately
+        resolve();
+        return result;
+      }
+      return originalEnd.apply(this, args);
+    };
+
     const timeout = setTimeout(() => {
       if (!responseSent) {
         responseSent = true;
@@ -212,30 +232,6 @@ export default async function handler(req, res) {
         resolve();
       }
     }, TIMEOUT_MS);
-
-    // CRITICAL: Intercept res.end to catch when response is sent
-    // The 'finish' event doesn't work reliably with serverless-http
-    const originalEnd = res.end.bind(res);
-    res.end = function(...args) {
-      console.log(`[REQ-${requestId}] [RES.END] Intercepted - headersSent: ${res.headersSent}, statusCode: ${res.statusCode}`);
-      
-      // Call the original end first
-      const result = originalEnd.apply(this, args);
-      
-      // Then resolve the promise
-      if (!responseSent) {
-        responseSent = true;
-        clearTimeout(timeout);
-        const duration = Date.now() - startTime;
-        console.log(
-          `[REQ-${requestId}] ✅ Response sent via res.end: ${duration}ms | ${method} ${url} | Status: ${res.statusCode}`
-        );
-        // Resolve after a tiny delay to ensure response is flushed
-        setImmediate(() => resolve());
-      }
-      
-      return result;
-    };
 
     try {
       if (needsDatabase) {
