@@ -21,7 +21,7 @@ Jika API backend hanya loading terus tanpa response, kemungkinan besar **Environ
 
 | Variable Name | Value | Description |
 |--------------|-------|-------------|
-| `MONGODB_URI` | `mongodb+srv://username:password@cluster.mongodb.net/todo?retryWrites=true&w=majority` | MongoDB connection string |
+| `MONGODB_URI` | `mongodb+srv://username:password@cluster.mongodb.net/todo?retryWrites=true&w=majority` | MongoDB connection string (PENTING: harus include database name, contoh: `/todo`) |
 | `JWT_SECRET` | `your-super-secret-jwt-key-min-32-characters-long` | JWT secret key (minimal 32 karakter) |
 
 #### Cara Set:
@@ -78,8 +78,11 @@ Setelah redeploy, test API:
 
 3. **Cek MongoDB Connection String:**
    - Pastikan format benar: `mongodb+srv://username:password@cluster.mongodb.net/database?retryWrites=true&w=majority`
+   - **PENTING**: Harus include database name setelah cluster URL (contoh: `/todo` atau `/your-db-name`)
    - Pastikan username dan password benar
    - Pastikan IP whitelist di MongoDB Atlas sudah include Vercel IPs (atau set ke `0.0.0.0/0` untuk development)
+   - Contoh yang BENAR: `mongodb+srv://user:pass@cluster.mongodb.net/todo?retryWrites=true&w=majority`
+   - Contoh yang SALAH: `mongodb+srv://user:pass@cluster.mongodb.net/?retryWrites=true&w=majority` (tidak ada database name)
 
 4. **Test MongoDB Connection:**
    - Coba connect dari local dengan connection string yang sama

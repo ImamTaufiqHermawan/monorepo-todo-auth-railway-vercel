@@ -2,44 +2,39 @@
 import app, { connectDB } from "../src/app.js";
 import serverless from "serverless-http";
 
-// Connect to MongoDB on cold start
-let dbConnected = false;
-let dbConnecting = false;
-let serverlessHandler = null;
+// Initialize serverless handler immediately (singleton)
+const serverlessHandler = serverless(app, {
+  binary: ['image/*', 'application/pdf'],
+});
 
-// Initialize serverless handler with timeout
-const initServerless = async () => {
-  // Initialize serverless handler first (non-blocking)
-  if (!serverlessHandler) {
-    serverlessHandler = serverless(app, {
-      binary: ['image/*', 'application/pdf'],
-    });
-  }
-  
-  // Connect to DB in background (non-blocking)
-  if (!dbConnected && !dbConnecting) {
-    dbConnecting = true;
-    connectDB()
+// Connect to MongoDB in background (non-blocking, fire-and-forget)
+let connectionPromise = null;
+
+const ensureDBConnection = () => {
+  // Only start connection if not already connecting/connected
+  if (!connectionPromise) {
+    connectionPromise = connectDB()
       .then(() => {
-        dbConnected = true;
-        dbConnecting = false;
         console.log("✅ MongoDB connected successfully");
       })
       .catch((error) => {
-        dbConnecting = false;
         console.error("❌ Failed to connect to MongoDB:", error.message);
-        // Don't throw - let requests continue, they'll handle DB errors
+        // Reset promise so we can retry on next request
+        connectionPromise = null;
       });
   }
-  
-  return serverlessHandler;
+  // Don't await - let it run in background
+  return connectionPromise;
 };
 
 // Vercel serverless function handler
 export default async function handler(req, res) {
+  // Start DB connection in background (non-blocking)
+  ensureDBConnection();
+  
+  // Handle request immediately without waiting for DB
   try {
-    const handler = await initServerless();
-    return handler(req, res);
+    return serverlessHandler(req, res);
   } catch (error) {
     console.error("Serverless handler error:", error);
     if (!res.headersSent) {
