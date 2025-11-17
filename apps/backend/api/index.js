@@ -2,11 +2,18 @@
 import app, { connectDB } from "../src/app.js";
 import serverless from "serverless-http";
 
-// Create handler
-const handler = serverless(app);
+// Create handler with proper options
+const handler = serverless(app, {
+  binary: false,
+  request: null,
+  response: null,
+});
 
-// Ensure DB connection on cold start
-connectDB().catch(console.error);
-
-// Export Vercel handler
-export default handler;
+// Export handler that ensures DB connection
+export default async function(req, res) {
+  // Ensure MongoDB is connected before handling request
+  await connectDB();
+  
+  // Let serverless-http handle the request
+  return handler(req, res);
+};
