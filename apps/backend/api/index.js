@@ -372,12 +372,13 @@ export default async function handler(req, res) {
       const currentUrl = req.url || "/";
       const correctUrl = url; // Use the URL we extracted earlier
       const correctPath = correctUrl.split("?")[0]; // Remove query string for path
+      const correctMethod = method; // Use the method we extracted earlier (POST, GET, etc.)
 
       // Always use a Proxy to protect against attempts to modify read-only properties
-      // This prevents errors when Express/serverless-http tries to modify req.url
+      // This prevents errors when Express/serverless-http tries to modify req.url, req.method, etc.
       const requestProxy = new Proxy(req, {
         get(target, prop) {
-          // Intercept read access to url/path/originalUrl to ensure correct values
+          // Intercept read access to url/path/originalUrl/method to ensure correct values
           if (prop === "url") {
             // If current URL is wrong, return correct one; otherwise return current
             return currentUrl === "/" && correctUrl !== "/"
@@ -396,15 +397,27 @@ export default async function handler(req, res) {
               ? correctUrl
               : target.originalUrl || target.url || correctUrl;
           }
+          if (prop === "method") {
+            // Always return the correct method (POST, GET, etc.) to prevent method changes
+            // This is critical because serverless-http might try to change POST to GET
+            return correctMethod;
+          }
           // For all other properties, return the original value
           return target[prop];
         },
         set(target, prop, value) {
-          // Prevent setting read-only properties (url, path, originalUrl)
-          // This prevents the "Cannot set property url" error
-          if (prop === "url" || prop === "path" || prop === "originalUrl") {
+          // Prevent setting read-only properties (url, path, originalUrl, method)
+          // This prevents the "Cannot set property url" error and method changes
+          if (
+            prop === "url" ||
+            prop === "path" ||
+            prop === "originalUrl" ||
+            prop === "method"
+          ) {
             console.warn(
-              `[REQ-${requestId}] ⚠️ Attempted to set req.${prop} to ${value}, ignoring (read-only property)`
+              `[REQ-${requestId}] ⚠️ Attempted to set req.${prop} to ${value}, ignoring (read-only property, keeping ${
+                prop === "method" ? correctMethod : correctUrl
+              })`
             );
             return true; // Pretend we set it successfully to prevent errors
           }
@@ -414,7 +427,12 @@ export default async function handler(req, res) {
         },
         defineProperty(target, prop, descriptor) {
           // Prevent redefining read-only properties
-          if (prop === "url" || prop === "path" || prop === "originalUrl") {
+          if (
+            prop === "url" ||
+            prop === "path" ||
+            prop === "originalUrl" ||
+            prop === "method"
+          ) {
             console.warn(
               `[REQ-${requestId}] ⚠️ Attempted to defineProperty req.${prop}, ignoring (read-only property)`
             );
