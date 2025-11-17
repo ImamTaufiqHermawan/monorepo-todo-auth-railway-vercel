@@ -29,7 +29,12 @@ const ensureDBConnection = () => {
 
 // Vercel serverless function handler
 export default async function handler(req, res) {
-  // Start DB connection in background (non-blocking)
+  // For health check, skip DB connection entirely
+  if (req.url === '/health' || req.url === '/health/') {
+    return serverlessHandler(req, res);
+  }
+  
+  // Start DB connection in background (non-blocking) for other routes
   ensureDBConnection();
   
   // Handle request immediately - serverless-http returns a Promise

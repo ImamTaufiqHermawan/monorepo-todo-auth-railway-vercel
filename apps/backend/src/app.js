@@ -2,8 +2,9 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
-import swaggerJsdoc from "swagger-jsdoc";
-import swaggerUi from "swagger-ui-express";
+// Swagger imports - lazy load untuk menghindari blocking
+// import swaggerJsdoc from "swagger-jsdoc";
+// import swaggerUi from "swagger-ui-express";
 import authRoutes from "./routes/auth.js";
 import todoRoutes from "./routes/todos.js";
 
@@ -12,46 +13,77 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Swagger configuration
-const swaggerOptions = {
-  definition: {
-    openapi: "3.1.0",
-    info: {
-      title: "Todo API",
-      version: "1.0.0",
-      description: "Todo Application API with Authentication",
-    },
-    servers: [
-      {
-        url: process.env.API_URL || `http://localhost:${PORT}`,
-        description: "API server",
-      },
-    ],
-    components: {
-      securitySchemes: {
-        bearerAuth: {
-          type: "http",
-          scheme: "bearer",
-          bearerFormat: "JWT",
+// Swagger configuration - lazy load untuk menghindari blocking
+let swaggerSpec = null;
+const getSwaggerSpec = async () => {
+  if (!swaggerSpec) {
+    const swaggerJsdoc = (await import('swagger-jsdoc')).default;
+    const swaggerOptions = {
+      definition: {
+        openapi: "3.1.0",
+        info: {
+          title: "Todo API",
+          version: "1.0.0",
+          description: "Todo Application API with Authentication",
+        },
+        servers: [
+          {
+            url: process.env.API_URL || `http://localhost:${PORT}`,
+            description: "API server",
+          },
+        ],
+        components: {
+          securitySchemes: {
+            bearerAuth: {
+              type: "http",
+              scheme: "bearer",
+              bearerFormat: "JWT",
+            },
+          },
         },
       },
-    },
-  },
-  apis: ["./src/routes/*.js"],
+      apis: ["./src/routes/*.js"],
+    };
+    swaggerSpec = swaggerJsdoc(swaggerOptions);
+  }
+  return swaggerSpec;
 };
-
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// Swagger UI - simplified setup
-app.use("/api-docs", swaggerUi.serve);
-app.get("/api-docs", swaggerUi.setup(swaggerSpec, {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: "Todo API Documentation"
-}));
+// Swagger UI - disabled untuk testing, enable jika diperlukan
+// Swagger UI bisa menyebabkan blocking di serverless
+if (process.env.ENABLE_SWAGGER === 'true') {
+  app.get("/api-docs", async (req, res, next) => {
+    try {
+      const swaggerUiModule = await import('swagger-ui-express');
+      const spec = await getSwaggerSpec();
+      swaggerUiModule.default.setup(spec, {
+        customCss: '.swagger-ui .topbar { display: none }',
+        customSiteTitle: "Todo API Documentation"
+      })(req, res, next);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to load Swagger UI' });
+    }
+  });
+} else {
+  app.get("/api-docs", async (req, res) => {
+    try {
+      const spec = await getSwaggerSpec();
+      res.json({ 
+        message: "Swagger UI disabled. Set ENABLE_SWAGGER=true to enable.",
+        spec 
+      });
+    } catch (error) {
+      res.json({ 
+        message: "Swagger UI disabled. Set ENABLE_SWAGGER=true to enable.",
+        error: error.message 
+      });
+    }
+  });
+}
 
 // Root endpoint
 app.get("/", (req, res) => {
@@ -79,9 +111,10 @@ app.get("/", (req, res) => {
   });
 });
 
-// Health check
+// Health check - super simple, no blocking
 app.get("/health", (req, res) => {
-  res.json({
+  // Immediately send response, no async operations
+  res.status(200).json({
     status: "ok",
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
