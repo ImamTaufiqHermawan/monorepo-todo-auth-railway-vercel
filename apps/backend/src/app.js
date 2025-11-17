@@ -225,9 +225,32 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
+// 404 handler - improved with more details
 app.use((req, res) => {
-  res.status(404).json({ error: "Route not found" });
+  res.status(404).json({
+    error: "Route not found",
+    message: `The requested endpoint ${req.method} ${req.path} does not exist`,
+    path: req.path,
+    method: req.method,
+    availableEndpoints: {
+      health: "GET /health",
+      healthChecks: "GET /health-checks",
+      apiDocs: "GET /api-docs",
+      auth: {
+        register: "POST /api/auth/register",
+        login: "POST /api/auth/login",
+        profile: "GET /api/auth/profile",
+      },
+      todos: {
+        list: "GET /api/todos",
+        create: "POST /api/todos",
+        get: "GET /api/todos/:id",
+        update: "PUT /api/todos/:id",
+        delete: "DELETE /api/todos/:id",
+      },
+    },
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // MongoDB connection helper

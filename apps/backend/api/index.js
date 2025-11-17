@@ -113,55 +113,88 @@ export default async function handler(req, res) {
   // Start DB connection in background (non-blocking) for other routes
   ensureDBConnection();
 
-  // Handle request immediately - serverless-http returns a Promise
-  try {
-    // Wrap in Promise to ensure response is sent
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        if (!res.headersSent) {
-          console.error("Timeout: Response not sent after 8 seconds");
-          res.status(504).json({ error: "Request timeout" });
-          resolve();
-        }
-      }, 8000);
+  // Handle request with Express via serverless-http
+  // Wrap in Promise to ensure response is sent
+  return new Promise((resolve) => {
+    let responseSent = false;
+    const timeout = setTimeout(() => {
+      if (!responseSent && !res.headersSent) {
+        console.error(`Timeout: Response not sent after 8 seconds for ${method} ${url}`);
+        responseSent = true;
+        res.writeHead(504, {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        });
+        res.end(
+          JSON.stringify({
+            error: "Request timeout",
+            message: "The request took too long to process",
+            path: url,
+            method: method,
+          }),
+          () => {
+            console.log(`Timeout response sent for ${method} ${url}`);
+            resolve();
+          }
+        );
+      }
+    }, 8000);
 
-      serverlessHandler(req, res)
-        .then((result) => {
+    // Track when response is sent
+    const originalEnd = res.end;
+    res.end = function (...args) {
+      if (!responseSent) {
+        responseSent = true;
+        clearTimeout(timeout);
+        const duration = Date.now() - startTime;
+        console.log(
+          `[${new Date().toISOString()}] Response: ${method} ${url} - ${duration}ms`
+        );
+      }
+      return originalEnd.apply(this, args);
+    };
+
+    // Handle the request with serverless-http
+    serverlessHandler(req, res)
+      .then((result) => {
+        if (!responseSent) {
+          responseSent = true;
           clearTimeout(timeout);
           const duration = Date.now() - startTime;
           console.log(
             `[${new Date().toISOString()}] Response: ${method} ${url} - ${duration}ms`
           );
-          resolve(result);
-        })
-        .catch((error) => {
+        }
+        resolve(result);
+      })
+      .catch((error) => {
+        if (!responseSent && !res.headersSent) {
+          responseSent = true;
           clearTimeout(timeout);
           console.error("Handler error:", error);
           const duration = Date.now() - startTime;
           console.error(
             `[${new Date().toISOString()}] Error: ${method} ${url} - ${duration}ms`
           );
-          if (!res.headersSent) {
-            res.status(500).json({
+          res.writeHead(500, {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          });
+          res.end(
+            JSON.stringify({
               error: "Internal server error",
               message: error.message,
-            });
-          }
-          resolve(); // Don't reject, just resolve to prevent hanging
-        });
-    });
-  } catch (error) {
-    console.error("Handler error:", error);
-    const duration = Date.now() - startTime;
-    console.error(
-      `[${new Date().toISOString()}] Error: ${method} ${url} - ${duration}ms`
-    );
-    if (!res.headersSent) {
-      res.status(500).json({
-        error: "Internal server error",
-        message: error.message,
+              path: url,
+              method: method,
+            }),
+            () => {
+              console.log(`Error response sent for ${method} ${url}`);
+              resolve();
+            }
+          );
+        } else {
+          resolve();
+        }
       });
-    }
-    return;
-  }
+  });
 }
