@@ -156,6 +156,7 @@ jobs:
                 -d "{
                   \"name\": \"$PROJECT_NAME\",
                   \"framework\": \"vite\",
+                  \"rootDirectory\": \"apps/frontend\",
                   \"gitRepository\": {
                     \"type\": \"github\",
                     \"repo\": \"${{ github.repository }}\",
@@ -198,11 +199,11 @@ jobs:
             fi
             CURRENT_PROJECT=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" "$UPDATE_URL")
             CURRENT_ROOT_DIR=$(echo "$CURRENT_PROJECT" | grep -o '"rootDirectory":"[^"]*' | cut -d'"' -f4 || echo "")
-            if [ -n "$CURRENT_ROOT_DIR" ] && [ "$CURRENT_ROOT_DIR" != "" ]; then
+            if [ "$CURRENT_ROOT_DIR" != "apps/frontend" ]; then
               UPDATE_RESPONSE=$(curl -s -X PATCH "$UPDATE_URL" \
                 -H "Authorization: Bearer $VERCEL_TOKEN" \
                 -H "Content-Type: application/json" \
-                -d "{\"rootDirectory\": null}")
+                -d "{\"rootDirectory\": \"apps/frontend\"}")
             fi
           fi
 
@@ -216,7 +217,7 @@ jobs:
           vercel-org-id: ${{ env.VERCEL_ORG_ID || secrets.VERCEL_ORG_ID || secrets.VERCEL_USER_ID }}
           vercel-project-id: ${{ env.VERCEL_FRONTEND_PROJECT_ID || secrets.VERCEL_FRONTEND_PROJECT_ID }}
           vercel-args: "--prod"
-          working-directory: .
+          working-directory: ./apps/frontend
           scope: ${{ env.VERCEL_ORG_ID || secrets.VERCEL_ORG_ID || secrets.VERCEL_USER_ID }}
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
@@ -322,6 +323,7 @@ jobs:
               -d "{
                 \"name\": \"$PROJECT_NAME\",
                 \"framework\": null,
+                \"rootDirectory\": \"apps/backend\",
                 \"gitRepository\": {
                   \"type\": \"github\",
                   \"repo\": \"${{ github.repository }}\",
@@ -343,11 +345,11 @@ jobs:
             fi
             CURRENT_PROJECT=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" "$UPDATE_URL")
             CURRENT_ROOT_DIR=$(echo "$CURRENT_PROJECT" | grep -o '"rootDirectory":"[^"]*' | cut -d'"' -f4 || echo "")
-            if [ -n "$CURRENT_ROOT_DIR" ]; then
+            if [ "$CURRENT_ROOT_DIR" != "apps/backend" ]; then
               UPDATE_RESPONSE=$(curl -s -X PATCH "$UPDATE_URL" \
                 -H "Authorization: Bearer $VERCEL_TOKEN" \
                 -H "Content-Type: application/json" \
-                -d "{\"rootDirectory\": null}")
+                -d "{\"rootDirectory\": \"apps/backend\"}")
             fi
           fi
 

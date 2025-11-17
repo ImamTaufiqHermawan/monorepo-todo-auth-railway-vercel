@@ -8,7 +8,7 @@
   "buildCommand": "pnpm build",
   "outputDirectory": "dist",
   "devCommand": "pnpm dev",
-  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+  "installCommand": "cd ../../ && pnpm install --frozen-lockfile",
   "framework": "vite",
   "rewrites": [
     {
