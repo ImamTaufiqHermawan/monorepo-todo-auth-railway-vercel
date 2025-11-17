@@ -86,14 +86,8 @@ export default async function handler(req, res) {
   const method = req.method || "GET";
   const requestId = Math.random().toString(36).substr(2, 9);
 
-  // Ensure req has the correct URL and path for serverless-http
-  // Vercel might pass the path differently
-  if (!req.url || req.url === "/") {
-    req.url = url;
-  }
-  if (!req.path) {
-    req.path = url.split("?")[0];
-  }
+  // Note: We cannot modify req.url or req.path directly as they are read-only getters
+  // We'll handle URL correction later using a Proxy if needed
 
   console.log(
     `[REQ-${requestId}] [${new Date().toISOString()}] ${method} ${url}`
@@ -216,9 +210,13 @@ export default async function handler(req, res) {
     // Track response completion using multiple methods
     let responseCompleted = false;
 
-    // Method 1: Intercept res.end
-    const originalEnd = res.end;
+    // Method 1: Intercept res.end - MUST be the first interceptor
+    const originalEnd = res.end.bind(res);
     res.end = function (...args) {
+      console.log(
+        `[REQ-${requestId}] [RES.END] Called with ${args.length} args, headersSent: ${res.headersSent}, statusCode: ${res.statusCode}`
+      );
+
       // Wrap callback if provided to ensure we resolve
       if (args.length > 0 && typeof args[args.length - 1] === "function") {
         const originalCallback = args[args.length - 1];
@@ -230,7 +228,7 @@ export default async function handler(req, res) {
             clearTimeout(timeout);
             const duration = Date.now() - startTime;
             console.log(
-              `[REQ-${requestId}] ✅ Response sent (via res.end callback): ${duration}ms | ${method} ${url}`
+              `[REQ-${requestId}] ✅ Response sent (via res.end callback): ${duration}ms | ${method} ${url} | Status: ${res.statusCode}`
             );
             resolve();
           }
@@ -242,21 +240,31 @@ export default async function handler(req, res) {
         clearTimeout(timeout);
         const duration = Date.now() - startTime;
         console.log(
-          `[REQ-${requestId}] ✅ Response sent (via res.end): ${duration}ms | ${method} ${url}`
+          `[REQ-${requestId}] ✅ Response sent (via res.end): ${duration}ms | ${method} ${url} | Status: ${res.statusCode}`
         );
         if (!responseSent) {
           responseSent = true;
-          // If no callback, resolve immediately
+          // If no callback, resolve after a small delay to ensure response is sent
           if (
             args.length === 0 ||
             typeof args[args.length - 1] !== "function"
           ) {
-            setTimeout(() => resolve(), 10);
+            setTimeout(() => {
+              console.log(
+                `[REQ-${requestId}] [RES.END] Resolving promise after timeout`
+              );
+              resolve();
+            }, 10);
           }
         }
       }
 
-      return originalEnd.apply(this, args);
+      const result = originalEnd.apply(this, args);
+      console.log(
+        `[REQ-${requestId}] [RES.END] Original end called, result:`,
+        result
+      );
+      return result;
     };
 
     // Method 2: Listen to 'finish' event on response
@@ -349,100 +357,82 @@ export default async function handler(req, res) {
       // Now handle request with serverless-http
       console.log(`[REQ-${requestId}] [EXPRESS] Routing to Express handler...`);
       console.log(
-        `[REQ-${requestId}] [EXPRESS] Before fix - URL: ${req.url}, Path: ${req.path}, Method: ${req.method}`
+        `[REQ-${requestId}] [EXPRESS] Request details - URL: ${
+          req.url
+        }, Path: ${req.path || "N/A"}, Method: ${req.method}, OriginalURL: ${
+          req.originalUrl || "N/A"
+        }`
       );
 
-      // CRITICAL: Ensure req.url and req.path are set correctly for serverless-http
-      // serverless-http uses req.url to route, so it MUST be correct
-      // Vercel might pass req.url as '/' or undefined, so we fix it here
-      const originalUrl = req.url;
-      const originalPath = req.path;
+      // CRITICAL: serverless-http needs the correct URL to route properly
+      // Vercel might pass req.url as '/' or the full path, so we need to ensure it's correct
+      // However, we CANNOT modify req.url directly as it's a read-only getter
+      // We'll use a Proxy to intercept property access and prevent modification attempts
 
-      // ALWAYS set the correct URL, path, and method, even if they seem correct
-      // serverless-http might modify them, so we ensure they're correct
+      const currentUrl = req.url || "/";
       const correctUrl = url; // Use the URL we extracted earlier
-      const correctPath = url.split("?")[0]; // Remove query string for path
-      const correctMethod = method; // Use the method we extracted earlier
+      const correctPath = correctUrl.split("?")[0]; // Remove query string for path
 
-      // Set all URL-related properties
-      req.url = correctUrl;
-      req.path = correctPath;
-      req.originalUrl = correctUrl;
-      req.method = correctMethod; // CRITICAL: Ensure method doesn't change
+      // Always use a Proxy to protect against attempts to modify read-only properties
+      // This prevents errors when Express/serverless-http tries to modify req.url
+      const requestProxy = new Proxy(req, {
+        get(target, prop) {
+          // Intercept read access to url/path/originalUrl to ensure correct values
+          if (prop === "url") {
+            // If current URL is wrong, return correct one; otherwise return current
+            return currentUrl === "/" && correctUrl !== "/"
+              ? correctUrl
+              : target.url;
+          }
+          if (prop === "path") {
+            const urlToUse =
+              currentUrl === "/" && correctUrl !== "/"
+                ? correctUrl
+                : target.url || currentUrl;
+            return urlToUse.split("?")[0];
+          }
+          if (prop === "originalUrl") {
+            return currentUrl === "/" && correctUrl !== "/"
+              ? correctUrl
+              : target.originalUrl || target.url || correctUrl;
+          }
+          // For all other properties, return the original value
+          return target[prop];
+        },
+        set(target, prop, value) {
+          // Prevent setting read-only properties (url, path, originalUrl)
+          // This prevents the "Cannot set property url" error
+          if (prop === "url" || prop === "path" || prop === "originalUrl") {
+            console.warn(
+              `[REQ-${requestId}] ⚠️ Attempted to set req.${prop} to ${value}, ignoring (read-only property)`
+            );
+            return true; // Pretend we set it successfully to prevent errors
+          }
+          // Allow setting other properties normally
+          target[prop] = value;
+          return true;
+        },
+        defineProperty(target, prop, descriptor) {
+          // Prevent redefining read-only properties
+          if (prop === "url" || prop === "path" || prop === "originalUrl") {
+            console.warn(
+              `[REQ-${requestId}] ⚠️ Attempted to defineProperty req.${prop}, ignoring (read-only property)`
+            );
+            return true; // Pretend success
+          }
+          return Reflect.defineProperty(target, prop, descriptor);
+        },
+      });
 
-      // Also ensure query is set if not present
-      if (!req.query) {
-        req.query = req.query || {};
-      }
-
+      // Use the proxy instead of the original req
+      req = requestProxy;
       console.log(
-        `[REQ-${requestId}] [EXPRESS] After fix - URL: ${req.url}, Path: ${req.path}, OriginalURL: ${req.originalUrl}, Method: ${req.method}`
+        `[REQ-${requestId}] [EXPRESS] Using protected request proxy - URL: ${req.url}, Path: ${req.path}, OriginalURL: ${req.originalUrl}, Method: ${req.method}`
       );
 
-      // Double-check right before calling serverlessHandler
-      if (req.url !== correctUrl || req.method !== correctMethod) {
-        console.warn(
-          `[REQ-${requestId}] ⚠️ URL or Method changed! Resetting - URL: ${req.url} -> ${correctUrl}, Method: ${req.method} -> ${correctMethod}`
-        );
-        req.url = correctUrl;
-        req.path = correctPath;
-        req.originalUrl = correctUrl;
-        req.method = correctMethod;
-      }
-
-      // Create a proxy to ensure req.url, req.path, and req.method stay correct
-      // This prevents serverless-http from modifying them
-      const urlGetter = () => correctUrl;
-      const pathGetter = () => correctPath;
-      const originalUrlGetter = () => correctUrl;
-      const methodGetter = () => correctMethod;
-
-      // Override getters to always return correct values
-      try {
-        Object.defineProperty(req, "url", {
-          get: urlGetter,
-          set: (val) => {
-            console.warn(
-              `[REQ-${requestId}] ⚠️ Attempted to change req.url to ${val}, keeping ${correctUrl}`
-            );
-          },
-          configurable: true,
-          enumerable: true,
-        });
-        Object.defineProperty(req, "path", {
-          get: pathGetter,
-          set: (val) => {
-            console.warn(
-              `[REQ-${requestId}] ⚠️ Attempted to change req.path to ${val}, keeping ${correctPath}`
-            );
-          },
-          configurable: true,
-          enumerable: true,
-        });
-        Object.defineProperty(req, "originalUrl", {
-          get: originalUrlGetter,
-          set: (val) => {
-            console.warn(
-              `[REQ-${requestId}] ⚠️ Attempted to change req.originalUrl to ${val}, keeping ${correctUrl}`
-            );
-          },
-          configurable: true,
-          enumerable: true,
-        });
-        Object.defineProperty(req, "method", {
-          get: methodGetter,
-          set: (val) => {
-            console.warn(
-              `[REQ-${requestId}] ⚠️ Attempted to change req.method to ${val}, keeping ${correctMethod}`
-            );
-          },
-          configurable: true,
-          enumerable: true,
-        });
-      } catch (e) {
-        console.warn(
-          `[REQ-${requestId}] Could not override request properties: ${e.message}`
-        );
+      // Ensure query is set if not present
+      if (!req.query) {
+        req.query = {};
       }
 
       const expressStartTime = Date.now();

@@ -61,40 +61,18 @@ app.use((req, res, next) => {
     contentType: req.headers['content-type'] || 'none'
   });
   
-  // Ensure path, url, and method don't change - serverless-http might modify them
-  const originalPath = req.path;
-  const originalUrl = req.url;
-  const originalOriginalUrl = req.originalUrl;
-  const originalMethod = req.method;
-  
-  // Override getters to prevent changes
-  Object.defineProperty(req, 'path', {
-    get: () => originalPath,
-    configurable: true,
-    enumerable: true
-  });
-  Object.defineProperty(req, 'url', {
-    get: () => originalUrl,
-    configurable: true,
-    enumerable: true
-  });
-  Object.defineProperty(req, 'originalUrl', {
-    get: () => originalOriginalUrl || originalUrl,
-    configurable: true,
-    enumerable: true
-  });
-  Object.defineProperty(req, 'method', {
-    get: () => originalMethod,
-    configurable: true,
-    enumerable: true
-  });
-  
-  // Log when response is sent
+  // Log when response is sent - but don't override properties here
+  // Properties are already protected in api/index.js
+  // Don't intercept res.end here - it's already intercepted in api/index.js
+  // Just log when response is about to be sent
   const originalEnd = res.end;
-  res.end = function(...args) {
-    console.log(`[EXPRESS] Response ended: ${req.method} ${req.path} - Status: ${res.statusCode} - headersSent: ${res.headersSent}`);
-    return originalEnd.apply(this, args);
-  };
+  if (originalEnd && typeof originalEnd === 'function') {
+    res.end = function(...args) {
+      console.log(`[EXPRESS] Response ended: ${req.method} ${req.path} - Status: ${res.statusCode} - headersSent: ${res.headersSent}`);
+      // Call the original end - which should be the interceptor from api/index.js
+      return originalEnd.apply(this, args);
+    };
+  }
   
   next();
 });
