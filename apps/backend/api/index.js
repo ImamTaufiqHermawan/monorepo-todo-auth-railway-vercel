@@ -32,16 +32,18 @@ export default async function handler(req, res) {
   // Start DB connection in background (non-blocking)
   ensureDBConnection();
   
-  // Handle request immediately without waiting for DB
+  // Handle request immediately - serverless-http returns a Promise
   try {
-    return serverlessHandler(req, res);
+    const result = await serverlessHandler(req, res);
+    return result;
   } catch (error) {
-    console.error("Serverless handler error:", error);
+    console.error("Handler error:", error);
     if (!res.headersSent) {
-      return res.status(500).json({
+      res.status(500).json({
         error: "Internal server error",
         message: error.message,
       });
     }
+    throw error;
   }
 }
