@@ -76,9 +76,24 @@ const ensureDBConnection = async () => {
 // Vercel serverless function handler
 export default async function handler(req, res) {
   const startTime = Date.now();
-  const url = req.url || req.query?.url || req.path || "";
+git  // Get URL from various possible sources
+  const url =
+    req.url ||
+    req.query?.url ||
+    req.path ||
+    req.headers?.["x-vercel-request-path"] ||
+    "";
   const method = req.method || "GET";
   const requestId = Math.random().toString(36).substr(2, 9);
+
+  // Ensure req has the correct URL and path for serverless-http
+  // Vercel might pass the path differently
+  if (!req.url || req.url === "/") {
+    req.url = url;
+  }
+  if (!req.path) {
+    req.path = url.split("?")[0];
+  }
 
   console.log(
     `[REQ-${requestId}] [${new Date().toISOString()}] ${method} ${url}`
@@ -315,8 +330,88 @@ export default async function handler(req, res) {
       // Now handle request with serverless-http
       console.log(`[REQ-${requestId}] [EXPRESS] Routing to Express handler...`);
       console.log(
-        `[REQ-${requestId}] [EXPRESS] Request URL: ${req.url}, Path: ${req.path}, Method: ${req.method}`
+        `[REQ-${requestId}] [EXPRESS] Before fix - URL: ${req.url}, Path: ${req.path}, Method: ${req.method}`
       );
+
+      // CRITICAL: Ensure req.url and req.path are set correctly for serverless-http
+      // serverless-http uses req.url to route, so it MUST be correct
+      // Vercel might pass req.url as '/' or undefined, so we fix it here
+      const originalUrl = req.url;
+      const originalPath = req.path;
+
+      // ALWAYS set the correct URL and path, even if they seem correct
+      // serverless-http might modify them, so we ensure they're correct
+      const correctUrl = url; // Use the URL we extracted earlier
+      const correctPath = url.split("?")[0]; // Remove query string for path
+
+      // Set all URL-related properties
+      req.url = correctUrl;
+      req.path = correctPath;
+      req.originalUrl = correctUrl;
+
+      // Also ensure query is set if not present
+      if (!req.query) {
+        req.query = req.query || {};
+      }
+
+      console.log(
+        `[REQ-${requestId}] [EXPRESS] After fix - URL: ${req.url}, Path: ${req.path}, OriginalURL: ${req.originalUrl}, Method: ${req.method}`
+      );
+
+      // Double-check right before calling serverlessHandler
+      if (req.url !== correctUrl) {
+        console.warn(
+          `[REQ-${requestId}] ⚠️ URL changed! Resetting to ${correctUrl}`
+        );
+        req.url = correctUrl;
+        req.path = correctPath;
+        req.originalUrl = correctUrl;
+      }
+
+      // Create a proxy to ensure req.url and req.path stay correct
+      // This prevents serverless-http from modifying them
+      const urlGetter = () => correctUrl;
+      const pathGetter = () => correctPath;
+      const originalUrlGetter = () => correctUrl;
+
+      // Override getters to always return correct values
+      try {
+        Object.defineProperty(req, "url", {
+          get: urlGetter,
+          set: (val) => {
+            console.warn(
+              `[REQ-${requestId}] ⚠️ Attempted to change req.url to ${val}, keeping ${correctUrl}`
+            );
+          },
+          configurable: true,
+          enumerable: true,
+        });
+        Object.defineProperty(req, "path", {
+          get: pathGetter,
+          set: (val) => {
+            console.warn(
+              `[REQ-${requestId}] ⚠️ Attempted to change req.path to ${val}, keeping ${correctPath}`
+            );
+          },
+          configurable: true,
+          enumerable: true,
+        });
+        Object.defineProperty(req, "originalUrl", {
+          get: originalUrlGetter,
+          set: (val) => {
+            console.warn(
+              `[REQ-${requestId}] ⚠️ Attempted to change req.originalUrl to ${val}, keeping ${correctUrl}`
+            );
+          },
+          configurable: true,
+          enumerable: true,
+        });
+      } catch (e) {
+        console.warn(
+          `[REQ-${requestId}] Could not override URL properties: ${e.message}`
+        );
+      }
+
       const expressStartTime = Date.now();
 
       // Call serverlessHandler - it returns a promise
