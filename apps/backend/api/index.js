@@ -10,34 +10,60 @@ const serverlessHandler = serverless(app, {
 
 // Connect to MongoDB in background (non-blocking, fire-and-forget)
 let connectionPromise = null;
+let connectionAttempts = 0;
+
+const getConnectionStateLabel = (state) => {
+  const labels = {
+    0: "disconnected",
+    1: "connected",
+    2: "connecting",
+    3: "disconnecting",
+  };
+  return labels[state] || "unknown";
+};
 
 const ensureDBConnection = async () => {
+  const connState = mongoose.connection.readyState;
+  const connStateLabel = getConnectionStateLabel(connState);
+
   // Check if already connected
-  if (mongoose.connection.readyState === 1) {
-    console.log("MongoDB already connected (readyState: 1)");
+  if (connState === 1) {
+    console.log(`[DB] ✅ Already connected (state: ${connStateLabel})`);
     return;
   }
 
   // If already connecting, wait for it
   if (connectionPromise) {
-    console.log("MongoDB connection in progress, waiting...");
+    console.log(
+      `[DB] ⏳ Connection in progress (state: ${connStateLabel}), waiting...`
+    );
     try {
       await connectionPromise;
+      console.log(`[DB] ✅ Waited for in-progress connection, now ready`);
       return;
     } catch (error) {
       // Connection failed, reset and retry
+      console.error(`[DB] ❌ Waiting for connection failed: ${error.message}`);
       connectionPromise = null;
       throw error;
     }
   }
 
   // Start new connection
+  connectionAttempts++;
+  const attemptNum = connectionAttempts;
+  console.log(
+    `[DB] 🔄 Starting new connection attempt #${attemptNum} (current state: ${connStateLabel})`
+  );
+
   connectionPromise = connectDB()
     .then(() => {
-      console.log("✅ MongoDB connected successfully");
+      console.log(`[DB] ✅ Connection attempt #${attemptNum} succeeded`);
     })
     .catch((error) => {
-      console.error("❌ Failed to connect to MongoDB:", error.message);
+      console.error(
+        `[DB] ❌ Connection attempt #${attemptNum} failed: ${error.message}`
+      );
       // Reset promise so we can retry on next request
       connectionPromise = null;
       throw error;
@@ -50,62 +76,60 @@ const ensureDBConnection = async () => {
 // Vercel serverless function handler
 export default async function handler(req, res) {
   const startTime = Date.now();
-  // Get URL from query or path
   const url = req.url || req.query?.url || req.path || "";
   const method = req.method || "GET";
-  console.log(`[${new Date().toISOString()}] Request: ${method} ${url}`);
-  console.log(`[${new Date().toISOString()}] Request details:`, {
-    url: req.url,
-    path: req.path,
-    query: req.query,
-    method: req.method,
-  });
+  const requestId = Math.random().toString(36).substr(2, 9);
 
-  // Handle favicon requests early
+  console.log(
+    `[REQ-${requestId}] [${new Date().toISOString()}] ${method} ${url}`
+  );
+  console.log(
+    `[REQ-${requestId}] Auth: ${
+      req.headers.authorization ? "✓ Bearer" : "✗ None"
+    }, ContentType: ${req.headers["content-type"] || "none"}`
+  );
+
+  // Handle favicon early
   if (
     url === "/favicon.ico" ||
     url === "/favicon.png" ||
     url.includes("favicon")
   ) {
-    console.log("Favicon request - returning 204");
-    return new Promise((resolve) => {
-      res.writeHead(204);
-      res.end();
-      resolve();
-    });
+    console.log(`[REQ-${requestId}] [FAVICON] Returning 204`);
+    res.writeHead(204);
+    res.end();
+    return;
   }
 
-  // For health check, return immediately without Express
+  // Health and root endpoints - immediate responses
   if (
     url === "/health" ||
     url === "/health/" ||
     url.startsWith("/health") ||
     url.includes("/health")
   ) {
-    console.log("Health check - returning immediately");
+    console.log(`[REQ-${requestId}] [HEALTH] Immediate response`);
     const response = {
       status: "ok",
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       responseTime: Date.now() - startTime,
     };
-    return new Promise((resolve) => {
-      res.writeHead(200, {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      });
-      res.end(JSON.stringify(response), () => {
-        console.log("Health check - response sent");
-        resolve();
-      });
+    res.writeHead(200, {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
     });
+    res.end(JSON.stringify(response));
+    console.log(
+      `[REQ-${requestId}] [HEALTH] Sent 200 (${Date.now() - startTime}ms)`
+    );
+    return;
   }
 
-  // For root endpoint, return immediately without Express
   if (url === "/" || url === "" || !url) {
-    console.log("Root endpoint - returning immediately");
+    console.log(`[REQ-${requestId}] [ROOT] Immediate response`);
     const response = {
       message: "Todo API Backend",
       version: "1.0.0",
@@ -116,65 +140,43 @@ export default async function handler(req, res) {
       },
       timestamp: new Date().toISOString(),
     };
-    return new Promise((resolve) => {
-      res.writeHead(200, {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      });
-      res.end(JSON.stringify(response), () => {
-        console.log("Root endpoint - response sent");
-        resolve();
-      });
+    res.writeHead(200, {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
     });
+    res.end(JSON.stringify(response));
+    console.log(
+      `[REQ-${requestId}] [ROOT] Sent 200 (${Date.now() - startTime}ms)`
+    );
+    return;
   }
 
-  // For routes that need database, wait for connection
-  // Routes that need DB: /api/auth, /api/todos, /api-docs (if enabled)
-  const needsDatabase = url.startsWith('/api/auth') || 
-                        url.startsWith('/api/todos') || 
-                        url.startsWith('/api-docs') ||
-                        url.startsWith('/health-checks');
-  
-  // Handle request with Express via serverless-http
-  // Wrap in Promise to ensure response is sent
+  // Determine whether this route needs DB
+  const needsDatabase =
+    url.startsWith("/api/auth") ||
+    url.startsWith("/api/todos") ||
+    url.startsWith("/api-docs") ||
+    url.startsWith("/health-checks");
+
+  console.log(
+    `[REQ-${requestId}] Route type: ${
+      needsDatabase ? "REQUIRES_DB" : "STATELESS"
+    }`
+  );
+
+  // Start a safety timeout immediately so we never get killed by Vercel after a long hang.
   return new Promise(async (resolve) => {
-    // If route needs database, wait for connection
-    if (needsDatabase) {
-      try {
-        console.log(`Waiting for MongoDB connection for ${method} ${url}...`);
-        await ensureDBConnection();
-        console.log(`MongoDB connection ready for ${method} ${url}`);
-      } catch (error) {
-        console.error(`MongoDB connection failed for ${method} ${url}:`, error.message);
-        res.writeHead(503, {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        });
-        res.end(
-          JSON.stringify({
-            error: "Database connection failed",
-            message: "Unable to connect to database. Please try again later.",
-            path: url,
-            method: method,
-          }),
-          () => {
-            console.log(`Database error response sent for ${method} ${url}`);
-            resolve();
-          }
-        );
-        return;
-      }
-    } else {
-      // For other routes, start connection in background (non-blocking)
-      ensureDBConnection();
-    }
+    const TIMEOUT_MS = 10000; // 10s safety guard
     let responseSent = false;
+
     const timeout = setTimeout(() => {
       if (!responseSent && !res.headersSent) {
-        console.error(`Timeout: Response not sent after 8 seconds for ${method} ${url}`);
         responseSent = true;
+        console.error(
+          `[REQ-${requestId}] ⏱️  TIMEOUT after ${TIMEOUT_MS}ms: Response not sent for ${method} ${url}`
+        );
         res.writeHead(504, {
           "Content-Type": "application/json",
           "Access-Control-Allow-Origin": "*",
@@ -184,17 +186,19 @@ export default async function handler(req, res) {
             error: "Request timeout",
             message: "The request took too long to process",
             path: url,
-            method: method,
+            method,
+            requestId,
+            timeout_ms: TIMEOUT_MS,
           }),
           () => {
-            console.log(`Timeout response sent for ${method} ${url}`);
+            console.log(`[REQ-${requestId}] Sent 504 timeout response`);
             resolve();
           }
         );
       }
-    }, 8000);
+    }, TIMEOUT_MS);
 
-    // Track when response is sent
+    // Intercept res.end to clear timeout and log duration
     const originalEnd = res.end;
     res.end = function (...args) {
       if (!responseSent) {
@@ -202,53 +206,124 @@ export default async function handler(req, res) {
         clearTimeout(timeout);
         const duration = Date.now() - startTime;
         console.log(
-          `[${new Date().toISOString()}] Response: ${method} ${url} - ${duration}ms`
+          `[REQ-${requestId}] ✅ Response sent: ${duration}ms | ${method} ${url}`
         );
       }
       return originalEnd.apply(this, args);
     };
 
-    // Handle the request with serverless-http
-    serverlessHandler(req, res)
-      .then((result) => {
-        if (!responseSent) {
-          responseSent = true;
+    try {
+      if (needsDatabase) {
+        console.log(
+          `[REQ-${requestId}] [DB] Waiting for MongoDB connection (timeout: 7s)...`
+        );
+        const dbStartTime = Date.now();
+
+        // Race DB connect with a shorter DB timeout so we don't hang forever
+        await Promise.race([
+          ensureDBConnection(),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error("DB connect timeout after 7s")),
+              7000
+            )
+          ),
+        ]);
+
+        const dbDuration = Date.now() - dbStartTime;
+        console.log(`[REQ-${requestId}] [DB] ✅ Connected in ${dbDuration}ms`);
+      } else {
+        // Fire-and-forget DB connection for non-db routes
+        console.log(
+          `[REQ-${requestId}] [DB] Starting background connection (non-blocking)`
+        );
+        ensureDBConnection().catch((err) => {
+          console.warn(
+            `[REQ-${requestId}] [DB] Background connection failed: ${
+              err.message || err
+            }`
+          );
+        });
+      }
+
+      // Now handle request with serverless-http
+      console.log(`[REQ-${requestId}] [EXPRESS] Routing to Express handler...`);
+      const expressStartTime = Date.now();
+
+      serverlessHandler(req, res)
+        .then((result) => {
           clearTimeout(timeout);
-          const duration = Date.now() - startTime;
-          console.log(
-            `[${new Date().toISOString()}] Response: ${method} ${url} - ${duration}ms`
-          );
-        }
-        resolve(result);
-      })
-      .catch((error) => {
-        if (!responseSent && !res.headersSent) {
-          responseSent = true;
+          if (!responseSent) {
+            responseSent = true;
+            const duration = Date.now() - startTime;
+            const expressDuration = Date.now() - expressStartTime;
+            console.log(
+              `[REQ-${requestId}] [EXPRESS] ✅ Completed in ${expressDuration}ms (total: ${duration}ms)`
+            );
+          }
+          resolve(result);
+        })
+        .catch((error) => {
           clearTimeout(timeout);
-          console.error("Handler error:", error);
-          const duration = Date.now() - startTime;
-          console.error(
-            `[${new Date().toISOString()}] Error: ${method} ${url} - ${duration}ms`
-          );
-          res.writeHead(500, {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          });
-          res.end(
-            JSON.stringify({
-              error: "Internal server error",
-              message: error.message,
-              path: url,
-              method: method,
-            }),
-            () => {
-              console.log(`Error response sent for ${method} ${url}`);
-              resolve();
-            }
-          );
-        } else {
-          resolve();
-        }
-      });
+          if (!responseSent && !res.headersSent) {
+            responseSent = true;
+            const duration = Date.now() - startTime;
+            console.error(
+              `[REQ-${requestId}] [EXPRESS] ❌ Error after ${duration}ms: ${error.message}`
+            );
+            res.writeHead(500, {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*",
+            });
+            res.end(
+              JSON.stringify({
+                error: "Internal server error",
+                message: error.message,
+                path: url,
+                method,
+                requestId,
+              }),
+              () => {
+                console.log(`[REQ-${requestId}] Sent 500 error response`);
+                resolve();
+              }
+            );
+          } else {
+            resolve();
+          }
+        });
+    } catch (error) {
+      clearTimeout(timeout);
+      if (!responseSent && !res.headersSent) {
+        responseSent = true;
+        const duration = Date.now() - startTime;
+        console.error(
+          `[REQ-${requestId}] [SETUP] ❌ Error during setup after ${duration}ms: ${
+            error.message || error
+          }`
+        );
+        res.writeHead(503, {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        });
+        res.end(
+          JSON.stringify({
+            error: "Service unavailable",
+            message: error.message,
+            path: url,
+            method,
+            requestId,
+          }),
+          () => {
+            console.log(
+              `[REQ-${requestId}] Sent 503 service-unavailable response`
+            );
+            resolve();
+          }
+        );
+      } else {
+        resolve();
+      }
+    }
   });
 }
