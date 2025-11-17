@@ -181,40 +181,36 @@ export default async function handler(req, res) {
     }`
   );
 
-  // Start a safety timeout immediately so we never get killed by Vercel after a long hang.
-  return new Promise(async (resolve) => {
-    const TIMEOUT_MS = 25000; // 25s timeout (Vercel max is 30s for hobby plan)
-    let responseSent = false;
-    let timeoutHandle;
+  // Process request without wrapping in Promise - Vercel handles response completion
+  const TIMEOUT_MS = 25000;
+  let timeoutHandle;
+  let responseSent = false;
 
-    const timeout = setTimeout(() => {
-      if (!responseSent) {
-        responseSent = true;
-        console.error(
-          `[REQ-${requestId}] ⏱️  TIMEOUT after ${TIMEOUT_MS}ms: Response not sent for ${method} ${url}`
-        );
-        if (!res.headersSent) {
-          res.writeHead(504, {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          });
-          res.end(
-            JSON.stringify({
-              error: "Request timeout",
-              message: "The request took too long to process",
-              path: url,
-              method,
-              requestId,
-              timeout_ms: TIMEOUT_MS,
-            })
-          );
-        }
-        console.log(`[REQ-${requestId}] Timeout handler completed`);
-        resolve();
-      }
-    }, TIMEOUT_MS);
-    
-    timeoutHandle = timeout;
+  const timeout = setTimeout(() => {
+    if (!responseSent && !res.headersSent) {
+      responseSent = true;
+      console.error(
+        `[REQ-${requestId}] ⏱️  TIMEOUT after ${TIMEOUT_MS}ms: Response not sent for ${method} ${url}`
+      );
+      res.writeHead(504, {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+      });
+      res.end(
+        JSON.stringify({
+          error: "Request timeout",
+          message: "The request took too long to process",
+          path: url,
+          method,
+          requestId,
+          timeout_ms: TIMEOUT_MS,
+        })
+      );
+      console.log(`[REQ-${requestId}] Timeout sent`);
+    }
+  }, TIMEOUT_MS);
+
+  timeoutHandle = timeout;
 
     try {
       if (needsDatabase) {
@@ -373,73 +369,65 @@ export default async function handler(req, res) {
 
       const expressStartTime = Date.now();
 
-      // Call serverlessHandler and AWAIT it - trust that it resolves when response is sent
-      try {
-        await serverlessHandler(req, res);
-        
-        // If we get here, serverlessHandler completed successfully
-        if (!responseSent) {
-          responseSent = true;
-          clearTimeout(timeoutHandle);
-          const duration = Date.now() - startTime;
-          console.log(
-            `[REQ-${requestId}] ✅ serverlessHandler completed: ${duration}ms | ${method} ${url} | Status: ${res.statusCode}`
-          );
-          resolve();
-        }
-      } catch (error) {
+    // Call serverlessHandler and AWAIT it - Vercel will wait for this async function to complete
+    try {
+      await serverlessHandler(req, res);
+      
+      // Clear timeout after successful completion
+      if (!responseSent) {
+        responseSent = true;
         clearTimeout(timeoutHandle);
-        if (!responseSent && !res.headersSent) {
-          responseSent = true;
-          const duration = Date.now() - startTime;
-          console.error(
-            `[REQ-${requestId}] [EXPRESS] ❌ Error after ${duration}ms: ${error.message}`
-          );
-          res.writeHead(500, {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          });
-          res.end(
-            JSON.stringify({
-              error: "Internal server error",
-              message: error.message,
-              path: url,
-              method,
-              requestId,
-            })
-          );
-          resolve();
-        } else {
-          resolve();
-        }
+        const duration = Date.now() - startTime;
+        console.log(
+          `[REQ-${requestId}] ✅ serverlessHandler completed: ${duration}ms | ${method} ${url} | Status: ${res.statusCode}`
+        );
       }
-    } catch (setupError) {
+    } catch (error) {
       clearTimeout(timeoutHandle);
       if (!responseSent && !res.headersSent) {
         responseSent = true;
         const duration = Date.now() - startTime;
         console.error(
-          `[REQ-${requestId}] [SETUP] ❌ Error during setup after ${duration}ms: ${
-            setupError.message || setupError
-          }`
+          `[REQ-${requestId}] [EXPRESS] ❌ Error after ${duration}ms: ${error.message}`
         );
-        res.writeHead(503, {
+        res.writeHead(500, {
           "Content-Type": "application/json",
           "Access-Control-Allow-Origin": "*",
         });
         res.end(
           JSON.stringify({
-            error: "Service unavailable",
-            message: setupError.message,
+            error: "Internal server error",
+            message: error.message,
             path: url,
             method,
             requestId,
           })
         );
-        resolve();
-      } else {
-        resolve();
       }
     }
-  });
+  } catch (setupError) {
+    clearTimeout(timeoutHandle);
+    if (!responseSent && !res.headersSent) {
+      responseSent = true;
+      const duration = Date.now() - startTime;
+      console.error(
+        `[REQ-${requestId}] [SETUP] ❌ Error during setup after ${duration}ms: ${
+          setupError.message || setupError
+        }`
+      );
+      res.writeHead(503, {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+      });
+      res.end(
+        JSON.stringify({
+          error: "Service unavailable",
+          message: setupError.message,
+          path: url,
+          method,
+          requestId,
+        })
+      );
+    }
+  }
 }
