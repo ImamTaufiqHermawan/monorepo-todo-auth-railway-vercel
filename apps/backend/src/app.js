@@ -191,12 +191,31 @@ export const connectDB = async () => {
     return;
   }
 
-  const mongoUri = process.env.MONGODB_URI || "mongodb://localhost:27017/todo";
+  // Check if already connecting
+  if (mongoose.connection.readyState === 1) {
+    isConnected = true;
+    console.log("MongoDB already connected (readyState: 1)");
+    return;
+  }
 
-  if (!process.env.MONGODB_URI) {
-    console.warn(
-      "⚠️  WARNING: MONGODB_URI not set, using default localhost connection"
-    );
+  if (mongoose.connection.readyState === 2) {
+    console.log("MongoDB connection in progress (readyState: 2)");
+    // Wait for connection to complete
+    return new Promise((resolve, reject) => {
+      mongoose.connection.once('connected', () => {
+        isConnected = true;
+        resolve();
+      });
+      mongoose.connection.once('error', reject);
+    });
+  }
+
+  const mongoUri = process.env.MONGODB_URI;
+
+  if (!mongoUri) {
+    const error = new Error("MONGODB_URI environment variable is not set");
+    console.error("❌", error.message);
+    throw error;
   }
 
   console.log(`Attempting to connect to MongoDB...`);
@@ -206,8 +225,9 @@ export const connectDB = async () => {
 
   try {
     await mongoose.connect(mongoUri, {
-      serverSelectionTimeoutMS: 10000,
-      socketTimeoutMS: 45000,
+      serverSelectionTimeoutMS: 5000, // Reduced timeout for serverless
+      socketTimeoutMS: 30000,
+      connectTimeoutMS: 5000,
     });
     isConnected = true;
     console.log("✅ Connected to MongoDB successfully");
