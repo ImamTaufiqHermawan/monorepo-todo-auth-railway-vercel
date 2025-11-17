@@ -213,117 +213,18 @@ export default async function handler(req, res) {
       }
     }, TIMEOUT_MS);
 
-    // Track response completion using multiple methods
-    let responseCompleted = false;
-
-    // Method 1: Intercept res.end - MUST be the first interceptor
-    const originalEnd = res.end.bind(res);
-    res.end = function (...args) {
-      console.log(
-        `[REQ-${requestId}] [RES.END] Called with ${args.length} args, headersSent: ${res.headersSent}, statusCode: ${res.statusCode}`
-      );
-
-      // Wrap callback if provided to ensure we resolve
-      if (args.length > 0 && typeof args[args.length - 1] === "function") {
-        const originalCallback = args[args.length - 1];
-        args[args.length - 1] = function (...callbackArgs) {
-          originalCallback.apply(this, callbackArgs);
-          if (!responseSent && !responseCompleted) {
-            responseCompleted = true;
-            responseSent = true;
-            clearTimeout(timeout);
-            const duration = Date.now() - startTime;
-            console.log(
-              `[REQ-${requestId}] ✅ Response sent (via res.end callback): ${duration}ms | ${method} ${url} | Status: ${res.statusCode}`
-            );
-            resolve();
-          }
-        };
-      }
-
-      if (!responseCompleted) {
-        responseCompleted = true;
-        clearTimeout(timeout);
-        const duration = Date.now() - startTime;
-        console.log(
-          `[REQ-${requestId}] ✅ Response sent (via res.end): ${duration}ms | ${method} ${url} | Status: ${res.statusCode}`
-        );
-        if (!responseSent) {
-          responseSent = true;
-          // If no callback, resolve after a small delay to ensure response is sent
-          if (
-            args.length === 0 ||
-            typeof args[args.length - 1] !== "function"
-          ) {
-            setTimeout(() => {
-              console.log(
-                `[REQ-${requestId}] [RES.END] Resolving promise after timeout`
-              );
-              resolve();
-            }, 10);
-          }
-        }
-      }
-
-      const result = originalEnd.apply(this, args);
-      console.log(
-        `[REQ-${requestId}] [RES.END] Original end called, result:`,
-        result
-      );
-      return result;
-    };
-
-    // Method 2: Listen to 'finish' event on response
+    // SIMPLIFIED: Just wait for finish event
     res.once("finish", () => {
-      if (!responseCompleted) {
-        responseCompleted = true;
-        clearTimeout(timeout);
-        const duration = Date.now() - startTime;
-        console.log(
-          `[REQ-${requestId}] ✅ Response finished (via finish event): ${duration}ms | ${method} ${url} | Status: ${res.statusCode}`
-        );
-        if (!responseSent) {
-          responseSent = true;
-          // Small delay to ensure response is fully sent
-          setTimeout(() => resolve(), 10);
-        }
-      }
-    });
-
-    // Method 3: Listen to 'close' event as fallback
-    res.once("close", () => {
-      if (!responseCompleted) {
-        responseCompleted = true;
-        clearTimeout(timeout);
-        const duration = Date.now() - startTime;
-        console.log(
-          `[REQ-${requestId}] ✅ Response closed (via close event): ${duration}ms | ${method} ${url} | Status: ${res.statusCode}`
-        );
-        if (!responseSent) {
-          responseSent = true;
-          setTimeout(() => resolve(), 10);
-        }
-      }
-    });
-
-    // Method 4: Monitor headersSent property
-    let headersSentCheckInterval = setInterval(() => {
-      if (res.headersSent && !responseSent && !responseCompleted) {
-        responseCompleted = true;
+      if (!responseSent) {
         responseSent = true;
         clearTimeout(timeout);
-        clearInterval(headersSentCheckInterval);
         const duration = Date.now() - startTime;
         console.log(
-          `[REQ-${requestId}] ✅ Response detected via headersSent check: ${duration}ms | ${method} ${url} | Status: ${res.statusCode}`
+          `[REQ-${requestId}] ✅ Response finished: ${duration}ms | ${method} ${url} | Status: ${res.statusCode}`
         );
-        setTimeout(() => resolve(), 10);
+        resolve();
       }
-    }, 50);
-
-    // Clear interval when response is sent
-    res.once("finish", () => clearInterval(headersSentCheckInterval));
-    res.once("close", () => clearInterval(headersSentCheckInterval));
+    });
 
     try {
       if (needsDatabase) {
@@ -476,72 +377,8 @@ export default async function handler(req, res) {
       const expressStartTime = Date.now();
 
       // Call serverlessHandler - it returns a promise
-      // The promise resolves when the response is sent
-      serverlessHandler(req, res)
-        .then((result) => {
-          const duration = Date.now() - startTime;
-          const expressDuration = Date.now() - expressStartTime;
-          console.log(
-            `[REQ-${requestId}] [EXPRESS] ✅ Handler promise resolved in ${expressDuration}ms (total: ${duration}ms) | headersSent: ${res.headersSent} | responseCompleted: ${responseCompleted} | responseSent: ${responseSent}`
-          );
-
-          // If response was already sent via our interceptors/events, don't do anything
-          // The interceptors/events will handle resolve()
-          if (responseSent || responseCompleted) {
-            console.log(
-              `[REQ-${requestId}] Response already handled by interceptors/events`
-            );
-            return;
-          }
-
-          // Check if response was sent
-          // serverless-http promise should resolve after response is sent, but sometimes it doesn't
-          if (res.headersSent) {
-            // Headers sent - response should be complete
-            if (!responseSent) {
-              responseSent = true;
-              responseCompleted = true;
-              clearTimeout(timeout);
-              console.log(
-                `[REQ-${requestId}] ✅ Resolving after handler promise resolved (headers sent) (${
-                  Date.now() - startTime
-                }ms)`
-              );
-              resolve(result);
-            }
-          } else {
-            // Headers not sent - wait a bit for async operations
-            // Sometimes Express sends response asynchronously
-            console.log(
-              `[REQ-${requestId}] ⚠️ Handler promise resolved but headers not sent, waiting 200ms for async response...`
-            );
-            setTimeout(() => {
-              if (res.headersSent && !responseSent) {
-                responseSent = true;
-                responseCompleted = true;
-                clearTimeout(timeout);
-                console.log(
-                  `[REQ-${requestId}] ✅ Headers sent after wait, resolving (${
-                    Date.now() - startTime
-                  }ms)`
-                );
-                resolve(result);
-              } else if (!responseSent) {
-                // Still no response - resolve anyway to prevent hanging
-                responseSent = true;
-                responseCompleted = true;
-                clearTimeout(timeout);
-                console.log(
-                  `[REQ-${requestId}] ⚠️ Still no response after wait, resolving anyway (${
-                    Date.now() - startTime
-                  }ms)`
-                );
-                resolve(result);
-              }
-            }, 200);
-          }
-        })
-        .catch((error) => {
+      // Don't await - let the 'finish' event handle completion
+      serverlessHandler(req, res).catch((error) => {
           clearTimeout(timeout);
           if (!responseSent && !res.headersSent) {
             responseSent = true;
