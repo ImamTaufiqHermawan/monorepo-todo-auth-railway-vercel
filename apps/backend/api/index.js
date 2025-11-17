@@ -29,9 +29,28 @@ const ensureDBConnection = () => {
 
 // Vercel serverless function handler
 export default async function handler(req, res) {
-  // For health check, skip DB connection entirely
-  if (req.url === '/health' || req.url === '/health/') {
-    return serverlessHandler(req, res);
+  const startTime = Date.now();
+  const url = req.url || req.path || '';
+  const method = req.method || 'GET';
+  console.log(`[${new Date().toISOString()}] Request: ${method} ${url}`);
+  
+  // Handle favicon requests early
+  if (url === '/favicon.ico' || url === '/favicon.png' || url.includes('favicon')) {
+    console.log('Favicon request - returning 204');
+    res.status(204).end();
+    return;
+  }
+  
+  // For health check, return immediately without Express
+  if (url === '/health' || url === '/health/' || url.startsWith('/health')) {
+    console.log('Health check - returning immediately');
+    res.status(200).json({
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      responseTime: Date.now() - startTime,
+    });
+    return;
   }
   
   // Start DB connection in background (non-blocking) for other routes
@@ -40,9 +59,13 @@ export default async function handler(req, res) {
   // Handle request immediately - serverless-http returns a Promise
   try {
     const result = await serverlessHandler(req, res);
+    const duration = Date.now() - startTime;
+    console.log(`[${new Date().toISOString()}] Response: ${method} ${url} - ${duration}ms`);
     return result;
   } catch (error) {
     console.error("Handler error:", error);
+    const duration = Date.now() - startTime;
+    console.error(`[${new Date().toISOString()}] Error: ${method} ${url} - ${duration}ms`);
     if (!res.headersSent) {
       res.status(500).json({
         error: "Internal server error",

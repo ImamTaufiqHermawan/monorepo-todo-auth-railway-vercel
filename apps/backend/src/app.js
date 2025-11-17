@@ -53,6 +53,15 @@ const getSwaggerSpec = async () => {
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+// Handle favicon requests early
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end();
+});
+
+app.get('/favicon.png', (req, res) => {
+  res.status(204).end();
+});
+
 // Swagger UI - disabled untuk testing, enable jika diperlukan
 // Swagger UI bisa menyebabkan blocking di serverless
 if (process.env.ENABLE_SWAGGER === 'true') {
