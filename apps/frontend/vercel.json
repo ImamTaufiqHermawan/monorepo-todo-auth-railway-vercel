@@ -9,6 +9,7 @@
   "outputDirectory": "dist",
   "devCommand": "pnpm dev",
   "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD .",
   "framework": "vite",
   "rewrites": [
     {
