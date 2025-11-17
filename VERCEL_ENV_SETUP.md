@@ -37,7 +37,21 @@ Jika API backend hanya loading terus tanpa response, kemungkinan besar **Environ
 
 6. Ulangi untuk `JWT_SECRET`
 
-### 3. Redeploy Project
+### 3. Set Function Timeout (Optional - untuk mencegah timeout)
+
+Jika mengalami timeout 300 detik:
+
+1. Klik **Settings** di menu project
+2. Klik **Functions** di sidebar kiri
+3. Set **Max Duration**:
+   - Hobby plan: maksimal 10 detik
+   - Pro plan: maksimal 60 detik
+   - Enterprise: maksimal 300 detik
+4. Klik **Save**
+
+**Catatan**: Default timeout adalah 10 detik untuk Hobby plan. Jika masih timeout, pertimbangkan upgrade ke Pro plan atau optimasi kode.
+
+### 4. Redeploy Project
 
 Setelah set environment variables:
 
@@ -46,7 +60,7 @@ Setelah set environment variables:
 3. Klik **Redeploy**
 4. Atau push commit baru ke repository
 
-### 4. Verifikasi
+### 5. Verifikasi
 
 Setelah redeploy, test API:
 
