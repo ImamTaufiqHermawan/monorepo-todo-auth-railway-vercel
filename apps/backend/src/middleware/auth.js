@@ -2,10 +2,13 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 
 export const authenticate = async (req, res, next) => {
-  console.log(`[AUTH] Authenticating request: ${req.method} ${req.path}`);
+  console.log(`[AUTH] Authenticating request: ${req.method} ${req.path} - URL: ${req.url} - OriginalURL: ${req.originalUrl}`);
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    console.log(`[AUTH] Token present: ${!!token}`);
+    const authHeader = req.headers.authorization;
+    console.log(`[AUTH] Authorization header: ${authHeader ? authHeader.substring(0, 20) + '...' : 'missing'}`);
+    
+    const token = authHeader?.replace(/^Bearer\s+/i, '').trim();
+    console.log(`[AUTH] Token extracted: ${token ? token.substring(0, 20) + '...' : 'missing'}`);
 
     if (!token) {
       console.log(`[AUTH] ❌ No token provided`);

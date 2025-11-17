@@ -169,9 +169,9 @@ export default async function handler(req, res) {
   }
 
   // Determine whether this route needs DB
+  // All API routes need DB, except health checks
   const needsDatabase =
-    url.startsWith("/api/auth") ||
-    url.startsWith("/api/todos") ||
+    url.startsWith("/api/") ||
     url.startsWith("/api-docs") ||
     url.startsWith("/health-checks");
 
@@ -266,7 +266,7 @@ export default async function handler(req, res) {
         clearTimeout(timeout);
         const duration = Date.now() - startTime;
         console.log(
-          `[REQ-${requestId}] ✅ Response finished (via finish event): ${duration}ms | ${method} ${url}`
+          `[REQ-${requestId}] ✅ Response finished (via finish event): ${duration}ms | ${method} ${url} | Status: ${res.statusCode}`
         );
         if (!responseSent) {
           responseSent = true;
@@ -283,7 +283,7 @@ export default async function handler(req, res) {
         clearTimeout(timeout);
         const duration = Date.now() - startTime;
         console.log(
-          `[REQ-${requestId}] ✅ Response closed (via close event): ${duration}ms | ${method} ${url}`
+          `[REQ-${requestId}] ✅ Response closed (via close event): ${duration}ms | ${method} ${url} | Status: ${res.statusCode}`
         );
         if (!responseSent) {
           responseSent = true;
@@ -291,6 +291,25 @@ export default async function handler(req, res) {
         }
       }
     });
+
+    // Method 4: Monitor headersSent property
+    let headersSentCheckInterval = setInterval(() => {
+      if (res.headersSent && !responseSent && !responseCompleted) {
+        responseCompleted = true;
+        responseSent = true;
+        clearTimeout(timeout);
+        clearInterval(headersSentCheckInterval);
+        const duration = Date.now() - startTime;
+        console.log(
+          `[REQ-${requestId}] ✅ Response detected via headersSent check: ${duration}ms | ${method} ${url} | Status: ${res.statusCode}`
+        );
+        setTimeout(() => resolve(), 10);
+      }
+    }, 50);
+
+    // Clear interval when response is sent
+    res.once("finish", () => clearInterval(headersSentCheckInterval));
+    res.once("close", () => clearInterval(headersSentCheckInterval));
 
     try {
       if (needsDatabase) {
@@ -339,15 +358,17 @@ export default async function handler(req, res) {
       const originalUrl = req.url;
       const originalPath = req.path;
 
-      // ALWAYS set the correct URL and path, even if they seem correct
+      // ALWAYS set the correct URL, path, and method, even if they seem correct
       // serverless-http might modify them, so we ensure they're correct
       const correctUrl = url; // Use the URL we extracted earlier
       const correctPath = url.split("?")[0]; // Remove query string for path
+      const correctMethod = method; // Use the method we extracted earlier
 
       // Set all URL-related properties
       req.url = correctUrl;
       req.path = correctPath;
       req.originalUrl = correctUrl;
+      req.method = correctMethod; // CRITICAL: Ensure method doesn't change
 
       // Also ensure query is set if not present
       if (!req.query) {
@@ -359,20 +380,22 @@ export default async function handler(req, res) {
       );
 
       // Double-check right before calling serverlessHandler
-      if (req.url !== correctUrl) {
+      if (req.url !== correctUrl || req.method !== correctMethod) {
         console.warn(
-          `[REQ-${requestId}] ⚠️ URL changed! Resetting to ${correctUrl}`
+          `[REQ-${requestId}] ⚠️ URL or Method changed! Resetting - URL: ${req.url} -> ${correctUrl}, Method: ${req.method} -> ${correctMethod}`
         );
         req.url = correctUrl;
         req.path = correctPath;
         req.originalUrl = correctUrl;
+        req.method = correctMethod;
       }
 
-      // Create a proxy to ensure req.url and req.path stay correct
+      // Create a proxy to ensure req.url, req.path, and req.method stay correct
       // This prevents serverless-http from modifying them
       const urlGetter = () => correctUrl;
       const pathGetter = () => correctPath;
       const originalUrlGetter = () => correctUrl;
+      const methodGetter = () => correctMethod;
 
       // Override getters to always return correct values
       try {
@@ -406,9 +429,19 @@ export default async function handler(req, res) {
           configurable: true,
           enumerable: true,
         });
+        Object.defineProperty(req, "method", {
+          get: methodGetter,
+          set: (val) => {
+            console.warn(
+              `[REQ-${requestId}] ⚠️ Attempted to change req.method to ${val}, keeping ${correctMethod}`
+            );
+          },
+          configurable: true,
+          enumerable: true,
+        });
       } catch (e) {
         console.warn(
-          `[REQ-${requestId}] Could not override URL properties: ${e.message}`
+          `[REQ-${requestId}] Could not override request properties: ${e.message}`
         );
       }
 
@@ -421,7 +454,7 @@ export default async function handler(req, res) {
           const duration = Date.now() - startTime;
           const expressDuration = Date.now() - expressStartTime;
           console.log(
-            `[REQ-${requestId}] [EXPRESS] ✅ Handler promise resolved in ${expressDuration}ms (total: ${duration}ms) | headersSent: ${res.headersSent} | responseCompleted: ${responseCompleted}`
+            `[REQ-${requestId}] [EXPRESS] ✅ Handler promise resolved in ${expressDuration}ms (total: ${duration}ms) | headersSent: ${res.headersSent} | responseCompleted: ${responseCompleted} | responseSent: ${responseSent}`
           );
 
           // If response was already sent via our interceptors/events, don't do anything
@@ -433,8 +466,8 @@ export default async function handler(req, res) {
             return;
           }
 
-          // serverless-http promise should only resolve after response is sent
-          // But let's double-check and wait a bit to be sure
+          // Check if response was sent
+          // serverless-http promise should resolve after response is sent, but sometimes it doesn't
           if (res.headersSent) {
             // Headers sent - response should be complete
             if (!responseSent) {
@@ -442,30 +475,42 @@ export default async function handler(req, res) {
               responseCompleted = true;
               clearTimeout(timeout);
               console.log(
-                `[REQ-${requestId}] ✅ Resolving after handler promise resolved (${
+                `[REQ-${requestId}] ✅ Resolving after handler promise resolved (headers sent) (${
                   Date.now() - startTime
                 }ms)`
               );
               resolve(result);
             }
           } else {
-            // Headers not sent - this is unusual, but wait a bit
+            // Headers not sent - wait a bit for async operations
+            // Sometimes Express sends response asynchronously
             console.log(
-              `[REQ-${requestId}] ⚠️ Handler promise resolved but headers not sent, waiting 100ms...`
+              `[REQ-${requestId}] ⚠️ Handler promise resolved but headers not sent, waiting 200ms for async response...`
             );
             setTimeout(() => {
-              if (!responseSent) {
+              if (res.headersSent && !responseSent) {
                 responseSent = true;
                 responseCompleted = true;
                 clearTimeout(timeout);
                 console.log(
-                  `[REQ-${requestId}] ✅ Resolving after wait (${
+                  `[REQ-${requestId}] ✅ Headers sent after wait, resolving (${
+                    Date.now() - startTime
+                  }ms)`
+                );
+                resolve(result);
+              } else if (!responseSent) {
+                // Still no response - resolve anyway to prevent hanging
+                responseSent = true;
+                responseCompleted = true;
+                clearTimeout(timeout);
+                console.log(
+                  `[REQ-${requestId}] ⚠️ Still no response after wait, resolving anyway (${
                     Date.now() - startTime
                   }ms)`
                 );
                 resolve(result);
               }
-            }, 100);
+            }, 200);
           }
         })
         .catch((error) => {

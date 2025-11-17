@@ -27,11 +27,12 @@ router.get('/', async (req, res) => {
       createdAt: -1,
     });
     console.log(`[TODOS] Found ${todos.length} todos, sending response...`);
-    res.json(todos);
-    console.log(`[TODOS] Response sent`);
+    return res.json(todos);
   } catch (error) {
     console.error(`[TODOS] Error:`, error);
-    res.status(500).json({ error: error.message });
+    if (!res.headersSent) {
+      return res.status(500).json({ error: error.message || 'Internal server error' });
+    }
   }
 });
 
@@ -62,20 +63,23 @@ router.post(
   '/',
   [body('title').trim().notEmpty()],
   async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
     try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
       const todo = new Todo({
         title: req.body.title,
         user: req.user._id,
       });
       await todo.save();
-      res.status(201).json(todo);
+      return res.status(201).json(todo);
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      console.error('[TODOS] Create error:', error);
+      if (!res.headersSent) {
+        return res.status(500).json({ error: error.message || 'Internal server error' });
+      }
     }
   }
 );
@@ -125,9 +129,12 @@ router.put('/:id', async (req, res) => {
     if (req.body.completed !== undefined) todo.completed = req.body.completed;
 
     await todo.save();
-    res.json(todo);
+    return res.json(todo);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[TODOS] Update error:', error);
+    if (!res.headersSent) {
+      return res.status(500).json({ error: error.message || 'Internal server error' });
+    }
   }
 });
 
@@ -162,9 +169,12 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Todo not found' });
     }
 
-    res.json({ message: 'Todo deleted successfully' });
+    return res.json({ message: 'Todo deleted successfully' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[TODOS] Delete error:', error);
+    if (!res.headersSent) {
+      return res.status(500).json({ error: error.message || 'Internal server error' });
+    }
   }
 });
 

@@ -55,16 +55,44 @@ app.use(express.json({ limit: '10mb' }));
 
 // Request logging middleware
 app.use((req, res, next) => {
-  console.log(`[EXPRESS] ${req.method} ${req.path} - URL: ${req.url}`);
+  console.log(`[EXPRESS] ${req.method} ${req.path} - URL: ${req.url} - OriginalURL: ${req.originalUrl}`);
   console.log(`[EXPRESS] Headers:`, {
     authorization: req.headers.authorization ? 'present' : 'missing',
     contentType: req.headers['content-type'] || 'none'
   });
   
+  // Ensure path, url, and method don't change - serverless-http might modify them
+  const originalPath = req.path;
+  const originalUrl = req.url;
+  const originalOriginalUrl = req.originalUrl;
+  const originalMethod = req.method;
+  
+  // Override getters to prevent changes
+  Object.defineProperty(req, 'path', {
+    get: () => originalPath,
+    configurable: true,
+    enumerable: true
+  });
+  Object.defineProperty(req, 'url', {
+    get: () => originalUrl,
+    configurable: true,
+    enumerable: true
+  });
+  Object.defineProperty(req, 'originalUrl', {
+    get: () => originalOriginalUrl || originalUrl,
+    configurable: true,
+    enumerable: true
+  });
+  Object.defineProperty(req, 'method', {
+    get: () => originalMethod,
+    configurable: true,
+    enumerable: true
+  });
+  
   // Log when response is sent
   const originalEnd = res.end;
   res.end = function(...args) {
-    console.log(`[EXPRESS] Response ended: ${req.method} ${req.path} - Status: ${res.statusCode}`);
+    console.log(`[EXPRESS] Response ended: ${req.method} ${req.path} - Status: ${res.statusCode} - headersSent: ${res.headersSent}`);
     return originalEnd.apply(this, args);
   };
   
@@ -235,40 +263,45 @@ app.get("/health-checks", async (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/todos", todoRoutes);
 
-// Error handling
+// Error handling middleware - MUST be after all routes
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(err.status || 500).json({
-    error: err.message || "Internal server error",
-  });
+  console.error('[ERROR]', err.stack);
+  if (!res.headersSent) {
+    return res.status(err.status || 500).json({
+      error: err.message || "Internal server error",
+    });
+  }
+  // If headers already sent, delegate to default Express error handler
+  next(err);
 });
 
-// 404 handler - improved with more details
+// 404 handler - MUST be last, after all routes and error handlers
 app.use((req, res) => {
-  res.status(404).json({
-    error: "Route not found",
-    message: `The requested endpoint ${req.method} ${req.path} does not exist`,
-    path: req.path,
-    method: req.method,
-    availableEndpoints: {
-      health: "GET /health",
-      healthChecks: "GET /health-checks",
-      apiDocs: "GET /api-docs",
-      auth: {
-        register: "POST /api/auth/register",
-        login: "POST /api/auth/login",
-        profile: "GET /api/auth/profile",
+  if (!res.headersSent) {
+    return res.status(404).json({
+      error: "Route not found",
+      message: `The requested endpoint ${req.method} ${req.path} does not exist`,
+      path: req.path,
+      method: req.method,
+      url: req.url,
+      availableEndpoints: {
+        health: "GET /health",
+        healthChecks: "GET /health-checks",
+        apiDocs: "GET /api-docs",
+        auth: {
+          register: "POST /api/auth/register",
+          login: "POST /api/auth/login",
+        },
+        todos: {
+          list: "GET /api/todos",
+          create: "POST /api/todos",
+          update: "PUT /api/todos/:id",
+          delete: "DELETE /api/todos/:id",
+        },
       },
-      todos: {
-        list: "GET /api/todos",
-        create: "POST /api/todos",
-        get: "GET /api/todos/:id",
-        update: "PUT /api/todos/:id",
-        delete: "DELETE /api/todos/:id",
-      },
-    },
-    timestamp: new Date().toISOString(),
-  });
+      timestamp: new Date().toISOString(),
+    });
+  }
 });
 
 // MongoDB connection helper

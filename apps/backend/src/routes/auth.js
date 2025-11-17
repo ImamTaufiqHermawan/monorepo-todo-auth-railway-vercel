@@ -40,12 +40,12 @@ router.post(
     body('password').isLength({ min: 8 }),
   ],
   async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
     try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
       const { email, password } = req.body;
 
       const existingUser = await User.findOne({ email });
@@ -62,13 +62,16 @@ router.post(
         { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
       );
 
-      res.status(201).json({
+      return res.status(201).json({
         message: 'User registered successfully',
         token,
         user: { id: user._id, email: user.email },
       });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      console.error('[AUTH] Register error:', error);
+      if (!res.headersSent) {
+        return res.status(500).json({ error: error.message || 'Internal server error' });
+      }
     }
   }
 );
@@ -104,12 +107,12 @@ router.post(
   '/login',
   [body('email').isEmail().normalizeEmail(), body('password').exists()],
   async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
     try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
       const { email, password } = req.body;
 
       const user = await User.findOne({ email });
@@ -128,13 +131,16 @@ router.post(
         { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
       );
 
-      res.json({
+      return res.json({
         message: 'Login successful',
         token,
         user: { id: user._id, email: user.email },
       });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      console.error('[AUTH] Login error:', error);
+      if (!res.headersSent) {
+        return res.status(500).json({ error: error.message || 'Internal server error' });
+      }
     }
   }
 );
