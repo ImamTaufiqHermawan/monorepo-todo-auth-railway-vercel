@@ -95,6 +95,9 @@ Set di Vercel Project > Settings > Environment Variables:
 # Install dependencies
 pnpm install
 
+# Kalau gak bisa run diatas, lakukan dulu 
+npm install -g pnpm
+
 # Copy environment file
 cp .env.example .env
 
