@@ -185,26 +185,7 @@ export default async function handler(req, res) {
   return new Promise(async (resolve) => {
     const TIMEOUT_MS = 25000; // 25s timeout (Vercel max is 30s for hobby plan)
     let responseSent = false;
-
-    // CRITICAL: Intercept res.end FIRST before any other code touches it
-    // This must be done BEFORE timeout and BEFORE serverlessHandler
-    const originalEnd = res.end.bind(res);
-    res.end = function(...args) {
-      if (!responseSent) {
-        responseSent = true;
-        clearTimeout(timeout);
-        const duration = Date.now() - startTime;
-        console.log(
-          `[REQ-${requestId}] ✅ [RES.END] Response sent: ${duration}ms | ${method} ${url} | Status: ${res.statusCode}`
-        );
-        // Call original end
-        const result = originalEnd.apply(this, args);
-        // Resolve immediately
-        resolve();
-        return result;
-      }
-      return originalEnd.apply(this, args);
-    };
+    let timeoutHandle;
 
     const timeout = setTimeout(() => {
       if (!responseSent) {
@@ -232,6 +213,8 @@ export default async function handler(req, res) {
         resolve();
       }
     }, TIMEOUT_MS);
+    
+    timeoutHandle = timeout;
 
     try {
       if (needsDatabase) {
@@ -390,45 +373,54 @@ export default async function handler(req, res) {
 
       const expressStartTime = Date.now();
 
-      // Call serverlessHandler - it returns a promise
-      // Don't await - let the 'finish' event handle completion
-      serverlessHandler(req, res).catch((error) => {
-          clearTimeout(timeout);
-          if (!responseSent && !res.headersSent) {
-            responseSent = true;
-            const duration = Date.now() - startTime;
-            console.error(
-              `[REQ-${requestId}] [EXPRESS] ❌ Error after ${duration}ms: ${error.message}`
-            );
-            res.writeHead(500, {
-              "Content-Type": "application/json",
-              "Access-Control-Allow-Origin": "*",
-            });
-            res.end(
-              JSON.stringify({
-                error: "Internal server error",
-                message: error.message,
-                path: url,
-                method,
-                requestId,
-              }),
-              () => {
-                console.log(`[REQ-${requestId}] Sent 500 error response`);
-                resolve();
-              }
-            );
-          } else {
-            resolve();
-          }
-        });
-    } catch (error) {
-      clearTimeout(timeout);
+      // Call serverlessHandler and AWAIT it - trust that it resolves when response is sent
+      try {
+        await serverlessHandler(req, res);
+        
+        // If we get here, serverlessHandler completed successfully
+        if (!responseSent) {
+          responseSent = true;
+          clearTimeout(timeoutHandle);
+          const duration = Date.now() - startTime;
+          console.log(
+            `[REQ-${requestId}] ✅ serverlessHandler completed: ${duration}ms | ${method} ${url} | Status: ${res.statusCode}`
+          );
+          resolve();
+        }
+      } catch (error) {
+        clearTimeout(timeoutHandle);
+        if (!responseSent && !res.headersSent) {
+          responseSent = true;
+          const duration = Date.now() - startTime;
+          console.error(
+            `[REQ-${requestId}] [EXPRESS] ❌ Error after ${duration}ms: ${error.message}`
+          );
+          res.writeHead(500, {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          });
+          res.end(
+            JSON.stringify({
+              error: "Internal server error",
+              message: error.message,
+              path: url,
+              method,
+              requestId,
+            })
+          );
+          resolve();
+        } else {
+          resolve();
+        }
+      }
+    } catch (setupError) {
+      clearTimeout(timeoutHandle);
       if (!responseSent && !res.headersSent) {
         responseSent = true;
         const duration = Date.now() - startTime;
         console.error(
           `[REQ-${requestId}] [SETUP] ❌ Error during setup after ${duration}ms: ${
-            error.message || error
+            setupError.message || setupError
           }`
         );
         res.writeHead(503, {
@@ -438,18 +430,13 @@ export default async function handler(req, res) {
         res.end(
           JSON.stringify({
             error: "Service unavailable",
-            message: error.message,
+            message: setupError.message,
             path: url,
             method,
             requestId,
-          }),
-          () => {
-            console.log(
-              `[REQ-${requestId}] Sent 503 service-unavailable response`
-            );
-            resolve();
-          }
+          })
         );
+        resolve();
       } else {
         resolve();
       }
