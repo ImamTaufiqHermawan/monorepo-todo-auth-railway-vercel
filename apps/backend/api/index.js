@@ -369,42 +369,43 @@ export default async function handler(req, res) {
 
       const expressStartTime = Date.now();
 
-    // Call serverlessHandler and AWAIT it - Vercel will wait for this async function to complete
-    try {
-      await serverlessHandler(req, res);
-      
-      // Clear timeout after successful completion
-      if (!responseSent) {
-        responseSent = true;
+    // Call serverlessHandler - it handles the response internally
+    // Don't await, just let it run and Vercel will detect when res.end() is called
+    serverlessHandler(req, res)
+      .then(() => {
+        // Clear timeout after successful completion
+        if (!responseSent) {
+          responseSent = true;
+          clearTimeout(timeoutHandle);
+          const duration = Date.now() - startTime;
+          console.log(
+            `[REQ-${requestId}] ✅ serverlessHandler completed: ${duration}ms | ${method} ${url} | Status: ${res.statusCode}`
+          );
+        }
+      })
+      .catch((error) => {
         clearTimeout(timeoutHandle);
-        const duration = Date.now() - startTime;
-        console.log(
-          `[REQ-${requestId}] ✅ serverlessHandler completed: ${duration}ms | ${method} ${url} | Status: ${res.statusCode}`
-        );
-      }
-    } catch (error) {
-      clearTimeout(timeoutHandle);
-      if (!responseSent && !res.headersSent) {
-        responseSent = true;
-        const duration = Date.now() - startTime;
-        console.error(
-          `[REQ-${requestId}] [EXPRESS] ❌ Error after ${duration}ms: ${error.message}`
-        );
-        res.writeHead(500, {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        });
-        res.end(
-          JSON.stringify({
-            error: "Internal server error",
-            message: error.message,
-            path: url,
-            method,
-            requestId,
-          })
-        );
-      }
-    }
+        if (!responseSent && !res.headersSent) {
+          responseSent = true;
+          const duration = Date.now() - startTime;
+          console.error(
+            `[REQ-${requestId}] [EXPRESS] ❌ Error after ${duration}ms: ${error.message}`
+          );
+          res.writeHead(500, {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          });
+          res.end(
+            JSON.stringify({
+              error: "Internal server error",
+              message: error.message,
+              path: url,
+              method,
+              requestId,
+            })
+          );
+        }
+      });
   } catch (setupError) {
     clearTimeout(timeoutHandle);
     if (!responseSent && !res.headersSent) {
