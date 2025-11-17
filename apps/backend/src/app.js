@@ -53,6 +53,28 @@ const getSwaggerSpec = async () => {
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+// CRITICAL: Restore HTTP method from custom header (Vercel serverless fix)
+// serverless-http loses the original method, so we pass it via header
+app.use((req, res, next) => {
+  const originalMethod = req.headers['x-original-method'] || req.headers['x-vercel-method-override'];
+  if (originalMethod && originalMethod !== req.method) {
+    console.log(`[METHOD-RESTORE] Restoring method from ${req.method} to ${originalMethod}`);
+    // Override the method property
+    try {
+      Object.defineProperty(req, 'method', {
+        value: originalMethod.toUpperCase(),
+        writable: true,
+        enumerable: true,
+        configurable: true
+      });
+    } catch (e) {
+      // Fallback: just assign it
+      req.method = originalMethod.toUpperCase();
+    }
+  }
+  next();
+});
+
 // Request logging middleware
 app.use((req, res, next) => {
   console.log(`[EXPRESS] ${req.method} ${req.path} - URL: ${req.url} - OriginalURL: ${req.originalUrl}`);

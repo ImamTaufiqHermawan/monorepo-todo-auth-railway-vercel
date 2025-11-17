@@ -383,31 +383,15 @@ export default async function handler(req, res) {
       // DO NOT read req.method here as it might have been mutated
       const correctMethod = originalMethod; // Use originalMethod from handler start
 
-      // CRITICAL FIX: Force the method into the original request object BEFORE creating Proxy
-      // serverless-http doesn't respect Proxy, it reads from the original object
-      // We need to override the read-only method property
-      try {
-        Object.defineProperty(req, 'method', {
-          value: correctMethod,
-          writable: false,
-          enumerable: true,
-          configurable: true
-        });
-        console.log(`[REQ-${requestId}] [FORCE-METHOD] Successfully forced req.method to: ${correctMethod}`);
-      } catch (error) {
-        console.warn(`[REQ-${requestId}] [FORCE-METHOD] Could not define method property: ${error.message}, trying alternative...`);
-        // If that fails, try to delete and reassign
-        try {
-          delete req.method;
-          req.method = correctMethod;
-          console.log(`[REQ-${requestId}] [FORCE-METHOD] Alternative method succeeded: ${req.method}`);
-        } catch (e2) {
-          console.error(`[REQ-${requestId}] [FORCE-METHOD] All attempts failed: ${e2.message}`);
-        }
+      // CRITICAL FIX: serverless-http creates a new request object, losing our modifications
+      // Solution: Pass the correct method via custom header that Express middleware can read
+      // This is the ONLY reliable way to preserve the HTTP method through serverless-http
+      if (!req.headers) {
+        req.headers = {};
       }
-
-      // Verify the method is correct
-      console.log(`[REQ-${requestId}] [VERIFY] req.method is now: ${req.method} (should be ${correctMethod})`);
+      req.headers['x-original-method'] = correctMethod;
+      req.headers['x-vercel-method-override'] = correctMethod;
+      console.log(`[REQ-${requestId}] [METHOD-HEADER] Set x-original-method header to: ${correctMethod}`);
 
       // Always use a Proxy to protect against attempts to modify read-only properties
       // This prevents errors when Express/serverless-http tries to modify req.url, req.method, etc.
