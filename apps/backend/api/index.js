@@ -215,17 +215,18 @@ export default async function handler(req, res) {
     try {
       if (needsDatabase) {
         console.log(
-          `[REQ-${requestId}] [DB] Waiting for MongoDB connection (timeout: 7s)...`
+          `[REQ-${requestId}] [DB] Waiting for MongoDB connection (timeout: 5s)...`
         );
         const dbStartTime = Date.now();
 
         // Race DB connect with a shorter DB timeout so we don't hang forever
+        // Reduced to 5 seconds to match MongoDB timeout
         await Promise.race([
           ensureDBConnection(),
           new Promise((_, reject) =>
             setTimeout(
-              () => reject(new Error("DB connect timeout after 7s")),
-              7000
+              () => reject(new Error("DB connect timeout after 5s")),
+              5000
             )
           ),
         ]);

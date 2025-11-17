@@ -271,9 +271,24 @@ export const connectDB = async () => {
 
   if (mongoose.connection.readyState === 2) {
     console.log("MongoDB connection in progress (readyState: 2)");
-    // Don't wait - connection is already in progress
-    // Return immediately, connection will complete in background
-    return;
+    // Wait for the connection to complete
+    // Don't return immediately - wait for it
+    return new Promise((resolve, reject) => {
+      const checkConnection = () => {
+        if (mongoose.connection.readyState === 1) {
+          isConnected = true;
+          console.log("MongoDB connection completed (readyState: 1)");
+          resolve();
+        } else if (mongoose.connection.readyState === 0) {
+          // Connection failed
+          reject(new Error("MongoDB connection failed"));
+        } else {
+          // Still connecting, check again
+          setTimeout(checkConnection, 100);
+        }
+      };
+      checkConnection();
+    });
   }
 
   const mongoUri = process.env.MONGODB_URI;
@@ -291,11 +306,14 @@ export const connectDB = async () => {
 
   try {
     await mongoose.connect(mongoUri, {
-      serverSelectionTimeoutMS: 3000, // Very short timeout for serverless
-      socketTimeoutMS: 20000,
-      connectTimeoutMS: 3000,
+      serverSelectionTimeoutMS: 5000, // 5 seconds - increased for reliability
+      socketTimeoutMS: 45000, // 45 seconds
+      connectTimeoutMS: 5000, // 5 seconds
       maxPoolSize: 1, // Single connection for serverless
       minPoolSize: 1,
+      // Optimize for serverless
+      bufferCommands: false, // Disable mongoose buffering
+      bufferMaxEntries: 0, // Disable mongoose buffering
     });
     isConnected = true;
     console.log("✅ Connected to MongoDB successfully");
