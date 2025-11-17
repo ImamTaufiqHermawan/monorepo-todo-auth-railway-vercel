@@ -83,18 +83,11 @@ app.use((req, res, next) => {
     contentType: req.headers['content-type'] || 'none'
   });
   
-  // Log when response is sent - but don't override properties here
-  // Properties are already protected in api/index.js
-  // Don't intercept res.end here - it's already intercepted in api/index.js
-  // Just log when response is about to be sent
-  const originalEnd = res.end;
-  if (originalEnd && typeof originalEnd === 'function') {
-    res.end = function(...args) {
-      console.log(`[EXPRESS] Response ended: ${req.method} ${req.path} - Status: ${res.statusCode} - headersSent: ${res.headersSent}`);
-      // Call the original end - which should be the interceptor from api/index.js
-      return originalEnd.apply(this, args);
-    };
-  }
+  // Don't intercept res.end - let serverless-http and api/index.js handle it
+  // Just log on finish event
+  res.on('finish', () => {
+    console.log(`[EXPRESS] Response finished: ${req.method} ${req.path} - Status: ${res.statusCode}`);
+  });
   
   next();
 });
