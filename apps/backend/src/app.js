@@ -56,6 +56,18 @@ app.use(express.json({ limit: '10mb' }));
 // Request logging middleware
 app.use((req, res, next) => {
   console.log(`[EXPRESS] ${req.method} ${req.path} - URL: ${req.url}`);
+  console.log(`[EXPRESS] Headers:`, {
+    authorization: req.headers.authorization ? 'present' : 'missing',
+    contentType: req.headers['content-type'] || 'none'
+  });
+  
+  // Log when response is sent
+  const originalEnd = res.end;
+  res.end = function(...args) {
+    console.log(`[EXPRESS] Response ended: ${req.method} ${req.path} - Status: ${res.statusCode}`);
+    return originalEnd.apply(this, args);
+  };
+  
   next();
 });
 
