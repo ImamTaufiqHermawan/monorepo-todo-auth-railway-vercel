@@ -32,202 +32,202 @@ jobs:
           fi
       - run: pnpm test || true
 
-  # build-frontend:
-  #   name: Build Frontend
-  #   needs: test
-  #   runs-on: ubuntu-latest
-  #   if: github.ref == 'refs/heads/main'
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: "22"
-  #     - name: Install pnpm
-  #       uses: pnpm/action-setup@v4
-  #       with:
-  #         version: 9.0.0
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: "22"
-  #         cache: "pnpm"
-  #     - name: Install dependencies
-  #       run: |
-  #         if [ -f "pnpm-lock.yaml" ]; then
-  #           pnpm install --frozen-lockfile
-  #         else
-  #           pnpm install
-  #         fi
-  #     - name: Build frontend
-  #       run: pnpm --filter @todo/frontend build
-  #       env:
-  #         VITE_API_URL: ${{ secrets.VITE_API_URL }}
+  build-frontend:
+    name: Build Frontend
+    needs: test
+    runs-on: ubuntu-latest
+    if: false  # Disabled - Frontend not being updated
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+      - name: Install dependencies
+        run: |
+          if [ -f "pnpm-lock.yaml" ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install
+          fi
+      - name: Build frontend
+        run: pnpm --filter @todo/frontend build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
-  # deploy-frontend-vercel:
-  #   name: Deploy Frontend to Vercel
-  #   needs: build-frontend
-  #   runs-on: ubuntu-latest
-  #   if: github.ref == 'refs/heads/main'
-  #   environment: production
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: "22"
-  #     - name: Install pnpm
-  #       uses: pnpm/action-setup@v4
-  #       with:
-  #         version: 9.0.0
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: "22"
-  #         cache: "pnpm"
-  #     - name: Install dependencies
-  #       run: |
-  #         if [ -f "pnpm-lock.yaml" ]; then
-  #           pnpm install --frozen-lockfile
-  #         else
-  #           pnpm install
-  #         fi
-  #     - name: Verify and Create Vercel Frontend Project
-  #       run: |
-  #         npm install -g vercel@latest
-  #         export VERCEL_TOKEN="${{ secrets.VERCEL_TOKEN }}"
-  #         export VERCEL_USER_ID="${{ secrets.VERCEL_USER_ID }}"
-  #         export VERCEL_ORG_ID="${{ secrets.VERCEL_ORG_ID }}"
-  #         export VERCEL_FRONTEND_PROJECT_ID="${{ secrets.VERCEL_FRONTEND_PROJECT_ID }}"
+  deploy-frontend-vercel:
+    name: Deploy Frontend to Vercel
+    needs: build-frontend
+    runs-on: ubuntu-latest
+    if: false  # Disabled - Frontend not being updated
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+      - name: Install dependencies
+        run: |
+          if [ -f "pnpm-lock.yaml" ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install
+          fi
+      - name: Verify and Create Vercel Frontend Project
+        run: |
+          npm install -g vercel@latest
+          export VERCEL_TOKEN="${{ secrets.VERCEL_TOKEN }}"
+          export VERCEL_USER_ID="${{ secrets.VERCEL_USER_ID }}"
+          export VERCEL_ORG_ID="${{ secrets.VERCEL_ORG_ID }}"
+          export VERCEL_FRONTEND_PROJECT_ID="${{ secrets.VERCEL_FRONTEND_PROJECT_ID }}"
 
-  #         if [ -n "$VERCEL_ORG_ID" ]; then
-  #           SCOPE="$VERCEL_ORG_ID"
-  #           SCOPE_TYPE="Team"
-  #         elif [ -n "$VERCEL_USER_ID" ]; then
-  #           SCOPE="$VERCEL_USER_ID"
-  #           SCOPE_TYPE="User"
-  #         else
-  #           echo "ERROR: Neither VERCEL_USER_ID nor VERCEL_ORG_ID is set!"
-  #           exit 1
-  #         fi
+          if [ -n "$VERCEL_ORG_ID" ]; then
+            SCOPE="$VERCEL_ORG_ID"
+            SCOPE_TYPE="Team"
+          elif [ -n "$VERCEL_USER_ID" ]; then
+            SCOPE="$VERCEL_USER_ID"
+            SCOPE_TYPE="User"
+          else
+            echo "ERROR: Neither VERCEL_USER_ID nor VERCEL_ORG_ID is set!"
+            exit 1
+          fi
 
-  #         if [ -z "$VERCEL_FRONTEND_PROJECT_ID" ] || [ "$VERCEL_FRONTEND_PROJECT_ID" = "dummy" ] || [ "$VERCEL_FRONTEND_PROJECT_ID" = "placeholder" ]; then
-  #           PROJECT_EXISTS="no"
-  #         else
-  #           set +e
-  #           PROJECT_INFO=$(vercel projects inspect "$VERCEL_FRONTEND_PROJECT_ID" --token "$VERCEL_TOKEN" --scope "$SCOPE" 2>&1)
-  #           PROJECT_EXIT_CODE=$?
-  #           set -e
-  #           PROJECT_ERROR=$(echo "$PROJECT_INFO" | grep -i "error\|not found\|404\|unauthorized\|Project not found" || true)
-  #           if [ $PROJECT_EXIT_CODE -ne 0 ] || [ -n "$PROJECT_ERROR" ]; then
-  #             PROJECT_EXISTS="no"
-  #           else
-  #             PROJECT_EXISTS="yes"
-  #             echo "VERCEL_ORG_ID=$SCOPE" >> $GITHUB_ENV
-  #           fi
-  #         fi
+          if [ -z "$VERCEL_FRONTEND_PROJECT_ID" ] || [ "$VERCEL_FRONTEND_PROJECT_ID" = "dummy" ] || [ "$VERCEL_FRONTEND_PROJECT_ID" = "placeholder" ]; then
+            PROJECT_EXISTS="no"
+          else
+            set +e
+            PROJECT_INFO=$(vercel projects inspect "$VERCEL_FRONTEND_PROJECT_ID" --token "$VERCEL_TOKEN" --scope "$SCOPE" 2>&1)
+            PROJECT_EXIT_CODE=$?
+            set -e
+            PROJECT_ERROR=$(echo "$PROJECT_INFO" | grep -i "error\|not found\|404\|unauthorized\|Project not found" || true)
+            if [ $PROJECT_EXIT_CODE -ne 0 ] || [ -n "$PROJECT_ERROR" ]; then
+              PROJECT_EXISTS="no"
+            else
+              PROJECT_EXISTS="yes"
+              echo "VERCEL_ORG_ID=$SCOPE" >> $GITHUB_ENV
+            fi
+          fi
 
-  #         if [ "$PROJECT_EXISTS" = "no" ]; then
-  #           PROJECT_NAME="${{ github.event.repository.name }}-frontend"
-  #           LIST_URL="https://api.vercel.com/v9/projects"
-  #           if [ "$SCOPE_TYPE" = "Team" ]; then
-  #             LIST_URL="$LIST_URL?teamId=$SCOPE"
-  #           fi
-  #           LIST_RESPONSE=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" "$LIST_URL")
+          if [ "$PROJECT_EXISTS" = "no" ]; then
+            PROJECT_NAME="${{ github.event.repository.name }}-frontend"
+            LIST_URL="https://api.vercel.com/v9/projects"
+            if [ "$SCOPE_TYPE" = "Team" ]; then
+              LIST_URL="$LIST_URL?teamId=$SCOPE"
+            fi
+            LIST_RESPONSE=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" "$LIST_URL")
             
-  #           if command -v jq &> /dev/null; then
-  #             EXISTING_PROJECT_ID=$(echo "$LIST_RESPONSE" | jq -r ".projects[] | select(.name == \"$PROJECT_NAME\") | .id" | head -1)
-  #           else
-  #             EXISTING_PROJECT_ID=$(echo "$LIST_RESPONSE" | grep -A 20 "\"name\":\"$PROJECT_NAME\"" | grep -o "\"id\":\"[^\"]*" | head -1 | cut -d'"' -f4)
-  #           fi
+            if command -v jq &> /dev/null; then
+              EXISTING_PROJECT_ID=$(echo "$LIST_RESPONSE" | jq -r ".projects[] | select(.name == \"$PROJECT_NAME\") | .id" | head -1)
+            else
+              EXISTING_PROJECT_ID=$(echo "$LIST_RESPONSE" | grep -A 20 "\"name\":\"$PROJECT_NAME\"" | grep -o "\"id\":\"[^\"]*" | head -1 | cut -d'"' -f4)
+            fi
             
-  #           if [ -z "$EXISTING_PROJECT_ID" ] || [ "$EXISTING_PROJECT_ID" = "null" ]; then
-  #             EXISTING_PROJECT_ID=$(echo "$LIST_RESPONSE" | grep -o "\"name\":\"$PROJECT_NAME\"" -A 5 | grep -o "\"id\":\"[^\"]*" | head -1 | cut -d'"' -f4)
-  #           fi
+            if [ -z "$EXISTING_PROJECT_ID" ] || [ "$EXISTING_PROJECT_ID" = "null" ]; then
+              EXISTING_PROJECT_ID=$(echo "$LIST_RESPONSE" | grep -o "\"name\":\"$PROJECT_NAME\"" -A 5 | grep -o "\"id\":\"[^\"]*" | head -1 | cut -d'"' -f4)
+            fi
             
-  #           if [ -n "$EXISTING_PROJECT_ID" ]; then
-  #             echo "VERCEL_FRONTEND_PROJECT_ID=$EXISTING_PROJECT_ID" >> $GITHUB_ENV
-  #             echo "VERCEL_ORG_ID=$SCOPE" >> $GITHUB_ENV
-  #             PROJECT_EXISTS="yes"
-  #           else
-  #             CREATE_URL="https://api.vercel.com/v9/projects"
-  #             if [ "$SCOPE_TYPE" = "Team" ]; then
-  #               CREATE_URL="$CREATE_URL?teamId=$SCOPE"
-  #             fi
-  #             CREATE_RESPONSE=$(curl -s -X POST "$CREATE_URL" \
-  #               -H "Authorization: Bearer $VERCEL_TOKEN" \
-  #               -H "Content-Type: application/json" \
-  #               -d "{
-  #                 \"name\": \"$PROJECT_NAME\",
-  #                 \"framework\": \"vite\",
-  #                 \"rootDirectory\": \"apps/frontend\",
-  #                 \"buildCommand\": \"cd ../.. && pnpm --filter @todo/frontend build\",
-  #                 \"outputDirectory\": \"dist\",
-  #                 \"gitRepository\": {
-  #                   \"type\": \"github\",
-  #                   \"repo\": \"${{ github.repository }}\",
-  #                   \"productionBranch\": \"main\"
-  #                 }
-  #               }")
+            if [ -n "$EXISTING_PROJECT_ID" ]; then
+              echo "VERCEL_FRONTEND_PROJECT_ID=$EXISTING_PROJECT_ID" >> $GITHUB_ENV
+              echo "VERCEL_ORG_ID=$SCOPE" >> $GITHUB_ENV
+              PROJECT_EXISTS="yes"
+            else
+              CREATE_URL="https://api.vercel.com/v9/projects"
+              if [ "$SCOPE_TYPE" = "Team" ]; then
+                CREATE_URL="$CREATE_URL?teamId=$SCOPE"
+              fi
+              CREATE_RESPONSE=$(curl -s -X POST "$CREATE_URL" \
+                -H "Authorization: Bearer $VERCEL_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d "{
+                  \"name\": \"$PROJECT_NAME\",
+                  \"framework\": \"vite\",
+                  \"rootDirectory\": \"apps/frontend\",
+                  \"buildCommand\": \"cd ../.. && pnpm --filter @todo/frontend build\",
+                  \"outputDirectory\": \"dist\",
+                  \"gitRepository\": {
+                    \"type\": \"github\",
+                    \"repo\": \"${{ github.repository }}\",
+                    \"productionBranch\": \"main\"
+                  }
+                }")
               
-  #             if echo "$CREATE_RESPONSE" | grep -q "\"id\""; then
-  #               NEW_PROJECT_ID=$(echo "$CREATE_RESPONSE" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
-  #               echo "VERCEL_FRONTEND_PROJECT_ID=$NEW_PROJECT_ID" >> $GITHUB_ENV
-  #               echo "VERCEL_ORG_ID=$SCOPE" >> $GITHUB_ENV
-  #               PROJECT_EXISTS="yes"
-  #             elif echo "$CREATE_RESPONSE" | grep -q "already exists\|conflict"; then
-  #               LIST_RESPONSE=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" "$LIST_URL")
-  #               if command -v jq &> /dev/null; then
-  #                 EXISTING_PROJECT_ID=$(echo "$LIST_RESPONSE" | jq -r ".projects[] | select(.name == \"$PROJECT_NAME\") | .id" | head -1)
-  #               else
-  #                 EXISTING_PROJECT_ID=$(echo "$LIST_RESPONSE" | grep -A 20 "\"name\":\"$PROJECT_NAME\"" | grep -o "\"id\":\"[^\"]*" | head -1 | cut -d'"' -f4)
-  #               fi
-  #               if [ -z "$EXISTING_PROJECT_ID" ] || [ "$EXISTING_PROJECT_ID" = "null" ]; then
-  #                 EXISTING_PROJECT_ID=$(echo "$LIST_RESPONSE" | grep -o "\"name\":\"$PROJECT_NAME\"" -A 5 | grep -o "\"id\":\"[^\"]*" | head -1 | cut -d'"' -f4)
-  #               fi
-  #               if [ -n "$EXISTING_PROJECT_ID" ]; then
-  #                 echo "VERCEL_FRONTEND_PROJECT_ID=$EXISTING_PROJECT_ID" >> $GITHUB_ENV
-  #                 echo "VERCEL_ORG_ID=$SCOPE" >> $GITHUB_ENV
-  #                 PROJECT_EXISTS="yes"
-  #               else
-  #                 echo "Failed to find existing project after conflict"
-  #                 exit 1
-  #               fi
-  #             else
-  #               echo "Failed to create frontend project"
-  #               exit 1
-  #             fi
-  #           fi
-  #         else
-  #           UPDATE_URL="https://api.vercel.com/v9/projects/$VERCEL_FRONTEND_PROJECT_ID"
-  #           if [ "$SCOPE_TYPE" = "Team" ]; then
-  #             UPDATE_URL="$UPDATE_URL?teamId=$SCOPE"
-  #           fi
-  #           CURRENT_PROJECT=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" "$UPDATE_URL")
-  #           CURRENT_ROOT_DIR=$(echo "$CURRENT_PROJECT" | grep -o '"rootDirectory":"[^"]*' | cut -d'"' -f4 || echo "")
-  #           UPDATE_PAYLOAD="{\"rootDirectory\": \"apps/frontend\", \"buildCommand\": \"cd ../.. && pnpm --filter @todo/frontend build\", \"outputDirectory\": \"dist\"}"
-  #           if [ "$CURRENT_ROOT_DIR" != "apps/frontend" ]; then
-  #             UPDATE_RESPONSE=$(curl -s -X PATCH "$UPDATE_URL" \
-  #               -H "Authorization: Bearer $VERCEL_TOKEN" \
-  #               -H "Content-Type: application/json" \
-  #               -d "$UPDATE_PAYLOAD")
-  #           else
-  #             UPDATE_RESPONSE=$(curl -s -X PATCH "$UPDATE_URL" \
-  #               -H "Authorization: Bearer $VERCEL_TOKEN" \
-  #               -H "Content-Type: application/json" \
-  #               -d "$UPDATE_PAYLOAD")
-  #           fi
-  #         fi
+              if echo "$CREATE_RESPONSE" | grep -q "\"id\""; then
+                NEW_PROJECT_ID=$(echo "$CREATE_RESPONSE" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
+                echo "VERCEL_FRONTEND_PROJECT_ID=$NEW_PROJECT_ID" >> $GITHUB_ENV
+                echo "VERCEL_ORG_ID=$SCOPE" >> $GITHUB_ENV
+                PROJECT_EXISTS="yes"
+              elif echo "$CREATE_RESPONSE" | grep -q "already exists\|conflict"; then
+                LIST_RESPONSE=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" "$LIST_URL")
+                if command -v jq &> /dev/null; then
+                  EXISTING_PROJECT_ID=$(echo "$LIST_RESPONSE" | jq -r ".projects[] | select(.name == \"$PROJECT_NAME\") | .id" | head -1)
+                else
+                  EXISTING_PROJECT_ID=$(echo "$LIST_RESPONSE" | grep -A 20 "\"name\":\"$PROJECT_NAME\"" | grep -o "\"id\":\"[^\"]*" | head -1 | cut -d'"' -f4)
+                fi
+                if [ -z "$EXISTING_PROJECT_ID" ] || [ "$EXISTING_PROJECT_ID" = "null" ]; then
+                  EXISTING_PROJECT_ID=$(echo "$LIST_RESPONSE" | grep -o "\"name\":\"$PROJECT_NAME\"" -A 5 | grep -o "\"id\":\"[^\"]*" | head -1 | cut -d'"' -f4)
+                fi
+                if [ -n "$EXISTING_PROJECT_ID" ]; then
+                  echo "VERCEL_FRONTEND_PROJECT_ID=$EXISTING_PROJECT_ID" >> $GITHUB_ENV
+                  echo "VERCEL_ORG_ID=$SCOPE" >> $GITHUB_ENV
+                  PROJECT_EXISTS="yes"
+                else
+                  echo "Failed to find existing project after conflict"
+                  exit 1
+                fi
+              else
+                echo "Failed to create frontend project"
+                exit 1
+              fi
+            fi
+          else
+            UPDATE_URL="https://api.vercel.com/v9/projects/$VERCEL_FRONTEND_PROJECT_ID"
+            if [ "$SCOPE_TYPE" = "Team" ]; then
+              UPDATE_URL="$UPDATE_URL?teamId=$SCOPE"
+            fi
+            CURRENT_PROJECT=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" "$UPDATE_URL")
+            CURRENT_ROOT_DIR=$(echo "$CURRENT_PROJECT" | grep -o '"rootDirectory":"[^"]*' | cut -d'"' -f4 || echo "")
+            UPDATE_PAYLOAD="{\"rootDirectory\": \"apps/frontend\", \"buildCommand\": \"cd ../.. && pnpm --filter @todo/frontend build\", \"outputDirectory\": \"dist\"}"
+            if [ "$CURRENT_ROOT_DIR" != "apps/frontend" ]; then
+              UPDATE_RESPONSE=$(curl -s -X PATCH "$UPDATE_URL" \
+                -H "Authorization: Bearer $VERCEL_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d "$UPDATE_PAYLOAD")
+            else
+              UPDATE_RESPONSE=$(curl -s -X PATCH "$UPDATE_URL" \
+                -H "Authorization: Bearer $VERCEL_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d "$UPDATE_PAYLOAD")
+            fi
+          fi
 
-  #         echo "VERCEL_ORG_ID=$SCOPE" >> $GITHUB_ENV
-  #     - name: Deploy Frontend to Vercel
-  #       id: vercel-deploy
-  #       uses: amondnet/vercel-action@v25
-  #       continue-on-error: false
-  #       with:
-  #         vercel-token: ${{ secrets.VERCEL_TOKEN }}
-  #         vercel-org-id: ${{ env.VERCEL_ORG_ID || secrets.VERCEL_ORG_ID || secrets.VERCEL_USER_ID }}
-  #         vercel-project-id: ${{ env.VERCEL_FRONTEND_PROJECT_ID || secrets.VERCEL_FRONTEND_PROJECT_ID }}
-  #         vercel-args: "--prod"
-  #         scope: ${{ env.VERCEL_ORG_ID || secrets.VERCEL_ORG_ID || secrets.VERCEL_USER_ID }}
-  #       env:
-  #         VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          echo "VERCEL_ORG_ID=$SCOPE" >> $GITHUB_ENV
+      - name: Deploy Frontend to Vercel
+        id: vercel-deploy
+        uses: amondnet/vercel-action@v25
+        continue-on-error: false
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ env.VERCEL_ORG_ID || secrets.VERCEL_ORG_ID || secrets.VERCEL_USER_ID }}
+          vercel-project-id: ${{ env.VERCEL_FRONTEND_PROJECT_ID || secrets.VERCEL_FRONTEND_PROJECT_ID }}
+          vercel-args: "--prod"
+          scope: ${{ env.VERCEL_ORG_ID || secrets.VERCEL_ORG_ID || secrets.VERCEL_USER_ID }}
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
   deploy-backend-vercel:
     name: Deploy Backend to Vercel
@@ -426,27 +426,19 @@ jobs:
 
   notify:
     name: Deployment Notification
-    needs: [deploy-backend-vercel, deploy-frontend-vercel]
+    needs: [deploy-backend-vercel]  # Removed deploy-frontend-vercel
     runs-on: ubuntu-latest
     if: always() && github.ref == 'refs/heads/main'
     steps:
       - name: Deployment Status
         run: |
           BACKEND_STATUS="${{ needs.deploy-backend-vercel.result }}"
-          FRONTEND_STATUS="${{ needs.deploy-frontend-vercel.result }}"
 
           if [ "$BACKEND_STATUS" == "success" ]; then
-            echo "Backend deployed successfully"
+            echo "✅ Backend deployed successfully"
           else
-            echo "Backend deployment failed"
-          fi
-
-          if [ "$FRONTEND_STATUS" == "success" ]; then
-            echo "Frontend deployed successfully"
-          else
-            echo "Frontend deployment failed"
-          fi
-
-          if [ "$BACKEND_STATUS" != "success" ] || [ "$FRONTEND_STATUS" != "success" ]; then
+            echo "❌ Backend deployment failed"
             exit 1
           fi
+          
+          echo "ℹ️  Frontend deployment skipped (not updated)"
