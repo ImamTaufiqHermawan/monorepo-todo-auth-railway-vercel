@@ -76,7 +76,7 @@ const ensureDBConnection = async () => {
 // Vercel serverless function handler
 export default async function handler(req, res) {
   const startTime = Date.now();
-git  // Get URL from various possible sources
+  // Get URL from various possible sources
   const url =
     req.url ||
     req.query?.url ||
