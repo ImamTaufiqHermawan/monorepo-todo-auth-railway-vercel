@@ -47,6 +47,32 @@ app.use(cors());
 app.use(express.json());
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
+// Root endpoint
+app.get("/", (req, res) => {
+  res.json({
+    message: "Todo API Backend",
+    version: "1.0.0",
+    endpoints: {
+      health: "/health",
+      healthChecks: "/health-checks",
+      apiDocs: "/api-docs",
+      auth: {
+        register: "POST /api/auth/register",
+        login: "POST /api/auth/login",
+        profile: "GET /api/auth/profile",
+      },
+      todos: {
+        list: "GET /api/todos",
+        create: "POST /api/todos",
+        get: "GET /api/todos/:id",
+        update: "PUT /api/todos/:id",
+        delete: "DELETE /api/todos/:id",
+      },
+    },
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Health check
 app.get("/health", (req, res) => {
   res.json({
