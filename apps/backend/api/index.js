@@ -183,37 +183,38 @@ export default async function handler(req, res) {
 
   // Start a safety timeout immediately so we never get killed by Vercel after a long hang.
   return new Promise(async (resolve) => {
-    const TIMEOUT_MS = 10000; // 10s safety guard
+    const TIMEOUT_MS = 25000; // 25s timeout (Vercel max is 30s for hobby plan)
     let responseSent = false;
 
     const timeout = setTimeout(() => {
-      if (!responseSent && !res.headersSent) {
+      if (!responseSent) {
         responseSent = true;
         console.error(
           `[REQ-${requestId}] ⏱️  TIMEOUT after ${TIMEOUT_MS}ms: Response not sent for ${method} ${url}`
         );
-        res.writeHead(504, {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        });
-        res.end(
-          JSON.stringify({
-            error: "Request timeout",
-            message: "The request took too long to process",
-            path: url,
-            method,
-            requestId,
-            timeout_ms: TIMEOUT_MS,
-          }),
-          () => {
-            console.log(`[REQ-${requestId}] Sent 504 timeout response`);
-            resolve();
-          }
-        );
+        if (!res.headersSent) {
+          res.writeHead(504, {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          });
+          res.end(
+            JSON.stringify({
+              error: "Request timeout",
+              message: "The request took too long to process",
+              path: url,
+              method,
+              requestId,
+              timeout_ms: TIMEOUT_MS,
+            })
+          );
+        }
+        console.log(`[REQ-${requestId}] Timeout handler completed`);
+        resolve();
       }
     }, TIMEOUT_MS);
 
-    // SIMPLIFIED: Just wait for finish event
+    // CRITICAL: Attach finish listener BEFORE calling serverlessHandler
+    // This ensures we catch the event when response completes
     res.once("finish", () => {
       if (!responseSent) {
         responseSent = true;
@@ -222,6 +223,7 @@ export default async function handler(req, res) {
         console.log(
           `[REQ-${requestId}] ✅ Response finished: ${duration}ms | ${method} ${url} | Status: ${res.statusCode}`
         );
+        // Resolve immediately when finish event fires
         resolve();
       }
     });
@@ -284,7 +286,7 @@ export default async function handler(req, res) {
       // DO NOT read req.method here as it might have been mutated
       const correctMethod = originalMethod; // Use originalMethod from handler start
 
-      // CRITICAL FIX: serverless-http creates a new request object, losing our modifications
+      // CRITICAL: serverless-http creates a new request object, losing our modifications
       // Solution: Pass the correct method via custom header that Express middleware can read
       // This is the ONLY reliable way to preserve the HTTP method through serverless-http
       if (!req.headers) {
@@ -293,6 +295,13 @@ export default async function handler(req, res) {
       req.headers['x-original-method'] = correctMethod;
       req.headers['x-vercel-method-override'] = correctMethod;
       console.log(`[REQ-${requestId}] [METHOD-HEADER] Set x-original-method header to: ${correctMethod}`);
+      
+      // DEBUG: Log request body for debugging 400 errors
+      if (req.body) {
+        console.log(`[REQ-${requestId}] [BODY] Request body:`, JSON.stringify(req.body));
+      } else {
+        console.log(`[REQ-${requestId}] [BODY] No request body found`);
+      }
 
       // Always use a Proxy to protect against attempts to modify read-only properties
       // This prevents errors when Express/serverless-http tries to modify req.url, req.method, etc.
@@ -382,7 +391,6 @@ export default async function handler(req, res) {
           clearTimeout(timeout);
           if (!responseSent && !res.headersSent) {
             responseSent = true;
-            responseCompleted = true;
             const duration = Date.now() - startTime;
             console.error(
               `[REQ-${requestId}] [EXPRESS] ❌ Error after ${duration}ms: ${error.message}`
