@@ -213,20 +213,29 @@ export default async function handler(req, res) {
       }
     }, TIMEOUT_MS);
 
-    // CRITICAL: Attach finish listener BEFORE calling serverlessHandler
-    // This ensures we catch the event when response completes
-    res.once("finish", () => {
+    // CRITICAL: Intercept res.end to catch when response is sent
+    // The 'finish' event doesn't work reliably with serverless-http
+    const originalEnd = res.end.bind(res);
+    res.end = function(...args) {
+      console.log(`[REQ-${requestId}] [RES.END] Intercepted - headersSent: ${res.headersSent}, statusCode: ${res.statusCode}`);
+      
+      // Call the original end first
+      const result = originalEnd.apply(this, args);
+      
+      // Then resolve the promise
       if (!responseSent) {
         responseSent = true;
         clearTimeout(timeout);
         const duration = Date.now() - startTime;
         console.log(
-          `[REQ-${requestId}] ✅ Response finished: ${duration}ms | ${method} ${url} | Status: ${res.statusCode}`
+          `[REQ-${requestId}] ✅ Response sent via res.end: ${duration}ms | ${method} ${url} | Status: ${res.statusCode}`
         );
-        // Resolve immediately when finish event fires
-        resolve();
+        // Resolve after a tiny delay to ensure response is flushed
+        setImmediate(() => resolve());
       }
-    });
+      
+      return result;
+    };
 
     try {
       if (needsDatabase) {
