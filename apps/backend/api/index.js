@@ -83,7 +83,10 @@ export default async function handler(req, res) {
     req.path ||
     req.headers?.["x-vercel-request-path"] ||
     "";
-  const method = req.method || "GET";
+  // Store the ORIGINAL method from the request - this is critical for POST/PUT/DELETE
+  // Vercel passes the correct method in req.method initially
+  const originalMethod = req.method || "GET";
+  const method = originalMethod;
   const requestId = Math.random().toString(36).substr(2, 9);
 
   // Note: We cannot modify req.url or req.path directly as they are read-only getters
@@ -91,6 +94,9 @@ export default async function handler(req, res) {
 
   console.log(
     `[REQ-${requestId}] [${new Date().toISOString()}] ${method} ${url}`
+  );
+  console.log(
+    `[REQ-${requestId}] ORIGINAL METHOD FROM VERCEL: ${originalMethod} (preserved for routing)`
   );
   console.log(
     `[REQ-${requestId}] Auth: ${
@@ -372,7 +378,10 @@ export default async function handler(req, res) {
       const currentUrl = req.url || "/";
       const correctUrl = url; // Use the URL we extracted earlier
       const correctPath = correctUrl.split("?")[0]; // Remove query string for path
-      const correctMethod = method; // Use the method we extracted earlier (POST, GET, etc.)
+      
+      // CRITICAL FIX: Use originalMethod captured at the very start
+      // DO NOT read req.method here as it might have been mutated
+      const correctMethod = originalMethod; // Use originalMethod from handler start
 
       // Always use a Proxy to protect against attempts to modify read-only properties
       // This prevents errors when Express/serverless-http tries to modify req.url, req.method, etc.
@@ -398,8 +407,9 @@ export default async function handler(req, res) {
               : target.originalUrl || target.url || correctUrl;
           }
           if (prop === "method") {
-            // Always return the correct method (POST, GET, etc.) to prevent method changes
-            // This is critical because serverless-http might try to change POST to GET
+            // CRITICAL: Always return the originalMethod we captured at handler start
+            // This prevents POST from being changed to GET by middleware/serverless-http
+            console.log(`[REQ-${requestId}] [PROXY] Intercepting method access, returning: ${correctMethod} (original from Vercel)`);
             return correctMethod;
           }
           // For all other properties, return the original value
