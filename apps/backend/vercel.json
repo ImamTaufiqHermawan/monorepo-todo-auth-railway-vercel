@@ -6,6 +6,7 @@
     }
   },
   "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+  "buildCommand": "",
   "builds": [
     {
       "src": "api/index.js",

@@ -58,7 +58,7 @@ jobs:
             pnpm install
           fi
       - name: Build frontend
-        run: pnpm --filter frontend exec vite build
+        run: pnpm --filter @todo/frontend build
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
 

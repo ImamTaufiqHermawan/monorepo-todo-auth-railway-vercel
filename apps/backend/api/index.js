@@ -1,25 +1,40 @@
 // Vercel Serverless Function wrapper for Express app
 import app, { connectDB } from "../src/app.js";
+import serverless from "serverless-http";
 
 // Connect to MongoDB on cold start
 let dbConnected = false;
+let serverlessHandler = null;
 
-// Vercel serverless function handler
-export default async function handler(req, res) {
-  // Connect to MongoDB if not already connected
+// Initialize serverless handler
+const initServerless = async () => {
   if (!dbConnected) {
     try {
       await connectDB();
       dbConnected = true;
     } catch (error) {
       console.error("Failed to connect to MongoDB:", error);
-      return res.status(500).json({
-        error: "Database connection failed",
-        message: error.message,
-      });
+      throw error;
     }
   }
+  
+  if (!serverlessHandler) {
+    serverlessHandler = serverless(app);
+  }
+  
+  return serverlessHandler;
+};
 
-  // Handle the request with Express app
-  return app(req, res);
+// Vercel serverless function handler
+export default async function handler(req, res) {
+  try {
+    const handler = await initServerless();
+    return handler(req, res);
+  } catch (error) {
+    console.error("Serverless handler error:", error);
+    return res.status(500).json({
+      error: "Internal server error",
+      message: error.message,
+    });
+  }
 }

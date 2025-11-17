@@ -7,7 +7,7 @@
   },
   "buildCommand": "cd ../.. && pnpm --filter @todo/frontend build",
   "outputDirectory": "dist",
-  "devCommand": "pnpm dev",
+  "devCommand": "cd ../.. && pnpm --filter @todo/frontend dev",
   "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
   "ignoreCommand": "git diff --quiet HEAD^ HEAD .",
   "framework": "vite",
