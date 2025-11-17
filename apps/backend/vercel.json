@@ -6,7 +6,6 @@
     }
   },
   "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
-  "buildCommand": "echo 'No build needed for serverless functions'",
   "builds": [
     {
       "src": "api/index.js",

@@ -157,6 +157,8 @@ jobs:
                   \"name\": \"$PROJECT_NAME\",
                   \"framework\": \"vite\",
                   \"rootDirectory\": \"apps/frontend\",
+                  \"buildCommand\": \"cd ../.. && pnpm --filter @todo/frontend build\",
+                  \"outputDirectory\": \"dist\",
                   \"gitRepository\": {
                     \"type\": \"github\",
                     \"repo\": \"${{ github.repository }}\",
@@ -199,11 +201,17 @@ jobs:
             fi
             CURRENT_PROJECT=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" "$UPDATE_URL")
             CURRENT_ROOT_DIR=$(echo "$CURRENT_PROJECT" | grep -o '"rootDirectory":"[^"]*' | cut -d'"' -f4 || echo "")
+            UPDATE_PAYLOAD="{\"rootDirectory\": \"apps/frontend\", \"buildCommand\": \"cd ../.. && pnpm --filter @todo/frontend build\", \"outputDirectory\": \"dist\"}"
             if [ "$CURRENT_ROOT_DIR" != "apps/frontend" ]; then
               UPDATE_RESPONSE=$(curl -s -X PATCH "$UPDATE_URL" \
                 -H "Authorization: Bearer $VERCEL_TOKEN" \
                 -H "Content-Type: application/json" \
-                -d "{\"rootDirectory\": \"apps/frontend\"}")
+                -d "$UPDATE_PAYLOAD")
+            else
+              UPDATE_RESPONSE=$(curl -s -X PATCH "$UPDATE_URL" \
+                -H "Authorization: Bearer $VERCEL_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d "$UPDATE_PAYLOAD")
             fi
           fi
 
@@ -324,6 +332,8 @@ jobs:
                 \"name\": \"$PROJECT_NAME\",
                 \"framework\": null,
                 \"rootDirectory\": \"apps/backend\",
+                \"buildCommand\": null,
+                \"outputDirectory\": null,
                 \"gitRepository\": {
                   \"type\": \"github\",
                   \"repo\": \"${{ github.repository }}\",
@@ -345,11 +355,17 @@ jobs:
             fi
             CURRENT_PROJECT=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" "$UPDATE_URL")
             CURRENT_ROOT_DIR=$(echo "$CURRENT_PROJECT" | grep -o '"rootDirectory":"[^"]*' | cut -d'"' -f4 || echo "")
+            UPDATE_PAYLOAD="{\"rootDirectory\": \"apps/backend\", \"buildCommand\": null, \"outputDirectory\": null}"
             if [ "$CURRENT_ROOT_DIR" != "apps/backend" ]; then
               UPDATE_RESPONSE=$(curl -s -X PATCH "$UPDATE_URL" \
                 -H "Authorization: Bearer $VERCEL_TOKEN" \
                 -H "Content-Type: application/json" \
-                -d "{\"rootDirectory\": \"apps/backend\"}")
+                -d "$UPDATE_PAYLOAD")
+            else
+              UPDATE_RESPONSE=$(curl -s -X PATCH "$UPDATE_URL" \
+                -H "Authorization: Bearer $VERCEL_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d "$UPDATE_PAYLOAD")
             fi
           fi
 
