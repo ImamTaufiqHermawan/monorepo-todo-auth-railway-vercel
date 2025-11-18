@@ -14,6 +14,7 @@ export const setToken = (token) => {
 // Hapus JWT token dari localStorage (saat logout)
 export const removeToken = () => {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem('user'); // Clear user data juga
 };
 
 // Cek apakah user sudah login (ada token atau tidak)

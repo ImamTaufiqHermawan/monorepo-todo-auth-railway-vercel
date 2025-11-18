@@ -9,8 +9,19 @@ function Dashboard({ onLogout }) {
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editText, setEditText] = useState('');
+  const [userEmail, setUserEmail] = useState('');
 
   useEffect(() => {
+    // Get user email from localStorage
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser);
+        setUserEmail(user.email || '');
+      } catch (e) {
+        console.error('Failed to parse user data');
+      }
+    }
     fetchTodos();
   }, []);
 
@@ -18,8 +29,13 @@ function Dashboard({ onLogout }) {
     try {
       const response = await api.get('/api/todos');
       setTodos(response.data);
+      setError(''); // Clear any previous errors
     } catch (err) {
-      setError('Failed to fetch todos');
+      // Jangan tampilkan error saat pertama kali load
+      // User mungkin belum punya todos atau ada network delay
+      console.error('Fetch todos error:', err);
+      // Set empty array jika gagal
+      setTodos([]);
     } finally {
       setLoading(false);
     }
@@ -99,7 +115,7 @@ function Dashboard({ onLogout }) {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h1 style={styles.title}>My Todos</h1>
+        <h1 style={styles.title}>{userEmail ? `${userEmail} Todos` : 'My Todos'}</h1>
         <button onClick={handleLogout} style={styles.logoutButton}>
           Logout
         </button>
