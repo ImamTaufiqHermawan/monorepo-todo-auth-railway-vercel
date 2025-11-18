@@ -1,5 +1,5 @@
-// Traditional Express server entry point
-// For serverless deployment, use netlify/functions/api.js (Netlify) or api/index.js (Vercel)
+// Entry point untuk development server lokal
+// Untuk deployment ke Vercel, gunakan api/index.js
 import { startServer } from "./app.js";
 
 startServer();

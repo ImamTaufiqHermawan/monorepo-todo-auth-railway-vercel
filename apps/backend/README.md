@@ -2,32 +2,31 @@
 
 Express.js REST API untuk Todo application dengan authentication, deployed sebagai Vercel Serverless Functions.
 
-## 🚀 Features
+## Features
 
-- ✅ RESTful API dengan Express 5
-- ✅ JWT Authentication
-- ✅ MongoDB dengan Mongoose
-- ✅ Swagger/OpenAPI Documentation
-- ✅ Serverless Functions (Vercel)
-- ✅ Health Check Endpoints
-- ✅ Input Validation
-- ✅ Error Handling
+- RESTful API dengan Express 5
+- JWT Authentication
+- MongoDB dengan Mongoose
+- Serverless Functions (Vercel)
+- Health Check Endpoints
+- Input Validation
+- Error Handling
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 backend/
 ├── api/
-│   └── index.js              # Vercel serverless function wrapper
+│   └── index.js              # Vercel serverless function handler
 ├── src/
 │   ├── app.js                # Express app configuration
-│   ├── index.js              # Server entry point (for local dev)
+│   ├── index.js              # Server entry point (untuk local dev)
 │   ├── routes/
-│   │   ├── auth.js           # Authentication routes
+│   │   ├── auth.js           # Authentication routes (register, login)
 │   │   └── todos.js          # Todo CRUD routes
 │   ├── models/
-│   │   ├── User.js           # User model
-│   │   └── Todo.js           # Todo model
+│   │   ├── User.js           # User model (email, password)
+│   │   └── Todo.js           # Todo model (title, completed, user)
 │   └── middleware/
 │       └── auth.js           # JWT authentication middleware
 ├── vercel.json               # Vercel configuration
@@ -35,20 +34,18 @@ backend/
 └── package.json
 ```
 
-## 🛠 Tech Stack
+## Tech Stack
 
-- **Node.js 22** - Runtime
-- **Express 5** - Web framework
-- **MongoDB + Mongoose** - Database & ODM
-- **JWT (jsonwebtoken)** - Authentication
-- **bcryptjs** - Password hashing
-- **express-validator** - Input validation
-- **Swagger/OpenAPI** - API documentation
-- **serverless-http** - Serverless adapter
+- Node.js 22 - Runtime
+- Express 5 - Web framework
+- MongoDB + Mongoose - Database & ODM
+- JWT (jsonwebtoken) - Authentication
+- bcryptjs - Password hashing
+- express-validator - Input validation
 
-## ⚙️ Environment Variables
+## Environment Variables
 
-Copy `.env.example` ke `.env` dan isi dengan values Anda:
+Copy `.env.example` ke `.env` dan isi dengan values yang sesuai:
 
 ```env
 # Server Configuration
@@ -56,38 +53,44 @@ PORT=3001
 NODE_ENV=development
 
 # MongoDB Configuration
-# Get from MongoDB Atlas: https://cloud.mongodb.com
+# Cara mendapatkan: 
+# 1. Login ke https://cloud.mongodb.com
+# 2. Buat cluster (Free Tier M0)
+# 3. Klik Connect > Connect your application
+# 4. Copy connection string
 MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/todo?retryWrites=true&w=majority
 
 # JWT Configuration
-# Generate strong secret: openssl rand -base64 32
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production-min-32-characters
+# Generate secret yang kuat: minimal 32 karakter
+# Bisa pakai: openssl rand -base64 32
+JWT_SECRET=buatlah-secret-key-yang-panjang-minimal-32-karakter-atau-lebih
 JWT_EXPIRES_IN=7d
-
-# API URL (optional, for Swagger docs)
-# API_URL=http://localhost:3001
 ```
 
 ### Environment Variables untuk Vercel
 
-Set di Vercel Project > Settings > Environment Variables:
+Set di Vercel Project > Settings > Environment Variables untuk environment "Production":
 
 **Required:**
 - `MONGODB_URI` - MongoDB connection string
-- `JWT_SECRET` - JWT secret key (min 32 characters)
+- `JWT_SECRET` - JWT secret key (minimal 32 karakter)
 
 **Optional:**
 - `JWT_EXPIRES_IN` - JWT expiration (default: `7d`)
 - `NODE_ENV` - Environment (default: `production`)
-- `API_URL` - API URL untuk Swagger docs
 
-## 🚀 Local Development
+## Local Development
 
 ### Prerequisites
 
-- Node.js 22+
+- Node.js 22 atau lebih baru
 - MongoDB Atlas account (Free Tier)
 - pnpm (atau npm)
+
+**PENTING: Install pnpm dulu jika belum:**
+```bash
+npm install -g pnpm
+```
 
 ### Setup
 
@@ -95,37 +98,56 @@ Set di Vercel Project > Settings > Environment Variables:
 # Install dependencies
 pnpm install
 
-# Kalau gak bisa run diatas, lakukan dulu 
-npm install -g pnpm
-
 # Copy environment file
 cp .env.example .env
 
-# Edit .env dengan MongoDB URI dan JWT secret
+# Edit .env dan isi dengan MongoDB URI dan JWT secret
+```
+
+### Mendapatkan MongoDB URI
+
+1. Login ke https://cloud.mongodb.com
+2. Buat cluster baru (pilih Free Tier M0)
+3. Buat database user:
+   - Klik "Database Access"
+   - Add New Database User
+   - Buat username dan password (simpan baik-baik)
+4. Setup Network Access:
+   - Klik "Network Access"
+   - Add IP Address
+   - Pilih "Allow Access from Anywhere" (`0.0.0.0/0`)
+5. Get Connection String:
+   - Klik "Database" > "Connect"
+   - Pilih "Connect your application"
+   - Copy connection string
+   - Ganti `<username>`, `<password>`, dan database name
+
+Contoh connection string:
+```
+mongodb+srv://myuser:mypassword@cluster0.abc123.mongodb.net/todo?retryWrites=true&w=majority
 ```
 
 ### Run Development Server
 
 ```bash
-# Run dengan watch mode
+# Start server
 pnpm dev
 
 # Server akan berjalan di http://localhost:3001
 ```
 
-### Access
+### Testing API
 
-- **API:** http://localhost:3001
-- **API Docs:** http://localhost:3001/api-docs
-- **Health Check:** http://localhost:3001/health
+Gunakan Postman atau browser:
 
-## 📚 API Endpoints
+**Health Check:**
+```bash
+GET http://localhost:3001/health
+```
 
-### Authentication
-
-**Register User**
-```http
-POST /api/auth/register
+**Register:**
+```bash
+POST http://localhost:3001/api/auth/register
 Content-Type: application/json
 
 {
@@ -134,9 +156,9 @@ Content-Type: application/json
 }
 ```
 
-**Login**
-```http
-POST /api/auth/login
+**Login:**
+```bash
+POST http://localhost:3001/api/auth/login
 Content-Type: application/json
 
 {
@@ -144,254 +166,354 @@ Content-Type: application/json
   "password": "password123"
 }
 
-Response:
-{
-  "token": "jwt-token-here",
-  "user": {
-    "id": "user-id",
-    "email": "user@example.com"
-  }
-}
+# Response akan berisi token JWT
 ```
 
-### Todos (Protected - Requires JWT)
-
-**Get All Todos**
-```http
-GET /api/todos
-Authorization: Bearer <jwt-token>
+**Get Todos (Butuh Token):**
+```bash
+GET http://localhost:3001/api/todos
+Authorization: Bearer <your-jwt-token>
 ```
 
-**Create Todo**
-```http
-POST /api/todos
-Authorization: Bearer <jwt-token>
+**Create Todo (Butuh Token):**
+```bash
+POST http://localhost:3001/api/todos
+Authorization: Bearer <your-jwt-token>
 Content-Type: application/json
 
 {
-  "title": "My Todo",
-  "description": "Todo description",
-  "completed": false
+  "title": "Belajar Node.js"
 }
 ```
 
-**Get Todo by ID**
-```http
-GET /api/todos/:id
-Authorization: Bearer <jwt-token>
+## Build untuk Production
+
+```bash
+# Build
+pnpm build
+
+# Build akan create folder dist/ dengan compiled code
 ```
 
-**Update Todo**
-```http
-PUT /api/todos/:id
-Authorization: Bearer <jwt-token>
-Content-Type: application/json
+## Deployment ke Vercel
 
-{
-  "title": "Updated Todo",
-  "completed": true
-}
-```
+### Cara Deploy
 
-**Delete Todo**
-```http
-DELETE /api/todos/:id
-Authorization: Bearer <jwt-token>
-```
-
-### Health Checks
-
-**Simple Health Check**
-```http
-GET /health
-
-Response:
-{
-  "status": "ok",
-  "timestamp": "2024-01-01T00:00:00.000Z",
-  "uptime": 123.456
-}
-```
-
-**Detailed Health Check**
-```http
-GET /health-checks
-
-Response:
-{
-  "status": "ok",
-  "timestamp": "2024-01-01T00:00:00.000Z",
-  "uptime": 123.456,
-  "environment": "production",
-  "checks": {
-    "api": { "status": "ok" },
-    "database": { "status": "ok" },
-    "memory": { "status": "ok", "used": 45.2, "total": 128.0 }
-  }
-}
-```
-
-## 🚀 Deployment ke Vercel
-
-### Manual Deploy Pertama Kali
-
-1. **Login ke Vercel:** https://vercel.com
-2. **Add New Project** > Import dari GitHub
-3. **Configure:**
-   - Project Name: `your-repo-name-backend`
-   - **Root Directory:** KOSONGKAN (biarkan kosong)
-   - Framework: Other
-4. **Environment Variables:**
-   - `MONGODB_URI` - MongoDB connection string
-   - `JWT_SECRET` - JWT secret key
-   - `JWT_EXPIRES_IN` - `7d` (optional)
-5. **Settings > General:**
-   - **Root Directory:** KOSONGKAN
-   - **Auto Deploy:** DISABLE (matikan)
-6. Deploy sekali manual
-7. Copy **Project ID** dari Settings > General
-8. Add ke GitHub Secrets: `VERCEL_BACKEND_PROJECT_ID`
+1. Login ke Vercel Dashboard: https://vercel.com
+2. Klik "Add New Project"
+3. Import repository dari GitHub
+4. Configure:
+   - Root Directory: KOSONGKAN (biarkan kosong)
+   - Framework Preset: Other
+   - Build Command: (kosongkan)
+   - Output Directory: (kosongkan)
+5. Add Environment Variables (lihat section Environment Variables di atas)
+6. Deploy
 
 ### Vercel Configuration
 
-File `vercel.json` mengkonfigurasi:
-- Serverless function handler: `api/index.js`
-- Routes: Semua `/api/*` routes ke serverless function
-- Health check routes
+File `vercel.json` sudah dikonfigurasi untuk:
+- Route semua request ke serverless function
+- Install pnpm saat build
+- Set Node.js version ke 22
 
-### CI/CD Deployment
+```json
+{
+  "version": 2,
+  "installCommand": "npm install -g pnpm && pnpm install",
+  "builds": [
+    {
+      "src": "api/index.js",
+      "use": "@vercel/node",
+      "config": {
+        "maxDuration": 30
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/api/index.js"
+    }
+  ]
+}
+```
 
-Setelah manual deploy pertama, CI/CD akan otomatis deploy via GitHub Actions:
-- Push ke `main` branch → Auto deploy
-- Workflow menggunakan `working-directory: ./apps/backend`
+### Testing Production API
 
-## 🔧 Development Scripts
+Setelah deploy, test dengan:
 
 ```bash
-# Development dengan watch mode
-pnpm dev
-
-# Start production server (untuk testing)
-pnpm start
-
-# Run tests
-pnpm test
-
-# Run unit tests
-pnpm test:unit
-
-# Run integration tests
-pnpm test:integration
+# Replace <your-deployment-url> dengan URL Vercel Anda
+GET https://<your-deployment-url>.vercel.app/health
+POST https://<your-deployment-url>.vercel.app/api/auth/register
 ```
 
-## 📦 Dependencies
+## API Endpoints
 
-**Production:**
-- `express` - Web framework
-- `mongoose` - MongoDB ODM
-- `jsonwebtoken` - JWT authentication
-- `bcryptjs` - Password hashing
-- `cors` - CORS middleware
-- `dotenv` - Environment variables
-- `express-validator` - Input validation
-- `swagger-jsdoc` - Swagger documentation
-- `swagger-ui-express` - Swagger UI
-- `serverless-http` - Serverless adapter
+### Authentication
 
-## 🗄 Database Schema
+**POST /api/auth/register**
+- Deskripsi: Register user baru
+- Body:
+  ```json
+  {
+    "email": "user@example.com",
+    "password": "password123"
+  }
+  ```
+- Response:
+  ```json
+  {
+    "message": "User registered successfully",
+    "token": "jwt-token",
+    "user": {
+      "id": "user-id",
+      "email": "user@example.com"
+    }
+  }
+  ```
 
-### User Model
+**POST /api/auth/login**
+- Deskripsi: Login user
+- Body:
+  ```json
+  {
+    "email": "user@example.com",
+    "password": "password123"
+  }
+  ```
+- Response:
+  ```json
+  {
+    "message": "Login successful",
+    "token": "jwt-token",
+    "user": {
+      "id": "user-id",
+      "email": "user@example.com"
+    }
+  }
+  ```
 
-```javascript
+### Todos (Protected - Butuh JWT Token)
+
+Semua endpoint todos butuh JWT token di Authorization header:
+```
+Authorization: Bearer <jwt-token>
+```
+
+**GET /api/todos**
+- Deskripsi: Get semua todos milik user yang login
+- Response:
+  ```json
+  [
+    {
+      "_id": "todo-id",
+      "title": "Belajar Node.js",
+      "completed": false,
+      "user": "user-id",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    }
+  ]
+  ```
+
+**POST /api/todos**
+- Deskripsi: Create todo baru
+- Body:
+  ```json
+  {
+    "title": "Belajar React"
+  }
+  ```
+- Response: Object todo yang baru dibuat
+
+**PUT /api/todos/:id**
+- Deskripsi: Update todo
+- Body:
+  ```json
+  {
+    "title": "Belajar React Advanced",
+    "completed": true
+  }
+  ```
+- Response: Object todo yang sudah diupdate
+
+**DELETE /api/todos/:id**
+- Deskripsi: Hapus todo
+- Response:
+  ```json
+  {
+    "message": "Todo deleted successfully"
+  }
+  ```
+
+### Health Check
+
+**GET /health**
+- Deskripsi: Simple health check
+- Response:
+  ```json
+  {
+    "status": "ok",
+    "timestamp": "2024-01-01T00:00:00.000Z",
+    "uptime": 123.456
+  }
+  ```
+
+**GET /health-checks**
+- Deskripsi: Detailed health check (cek database, memory, env variables)
+- Response: Object dengan detail health status
+
+## Troubleshooting
+
+### Issue: MongoDB connection error
+
+**Error:** `authentication failed`
+
+**Penyebab:** Username atau password salah
+
+**Solusi:**
+1. Cek username dan password di MongoDB Atlas > Database Access
+2. Pastikan connection string benar
+3. Cek tidak ada special characters di password yang perlu di-encode
+
+---
+
+**Error:** `ENOTFOUND` atau `getaddrinfo`
+
+**Penyebab:** Connection string salah atau cluster belum ready
+
+**Solusi:**
+1. Cek format connection string
+2. Tunggu cluster selesai dibuat (3-5 menit)
+3. Test koneksi internet
+
+---
+
+**Error:** `timeout` atau `MongoServerSelectionError`
+
+**Penyebab:** IP tidak di-whitelist atau network blocking
+
+**Solusi:**
+1. Di MongoDB Atlas > Network Access, tambahkan IP `0.0.0.0/0`
+2. Cek firewall tidak blocking port 27017
+3. Cek antivirus tidak blocking koneksi
+
+### Issue: JWT authentication error
+
+**Error:** `Invalid token` atau `Authentication required`
+
+**Penyebab:** 
+- Token tidak ada atau salah
+- JWT_SECRET berbeda
+- Token expired
+
+**Solusi:**
+1. Pastikan JWT_SECRET sama di semua environment
+2. Cek token dikirim di Authorization header dengan format: `Bearer <token>`
+3. Login ulang untuk dapat token baru jika expired
+
+### Issue: Vercel deployment failed
+
+**Error:** `Project not found`
+
+**Penyebab:** Project ID salah atau token tidak punya akses
+
+**Solusi:**
+1. Cek Project ID di Vercel Settings > General
+2. Pastikan VERCEL_TOKEN valid dan punya akses ke project
+3. Regenerate token jika perlu
+
+---
+
+**Error:** `pnpm not found`
+
+**Solusi:**
+Tambahkan di `vercel.json`:
+```json
 {
-  email: String (required, unique, lowercase),
-  password: String (required, hashed),
-  createdAt: Date,
-  updatedAt: Date
+  "installCommand": "npm install -g pnpm && pnpm install"
 }
 ```
 
-### Todo Model
+---
 
-```javascript
-{
-  title: String (required),
-  description: String,
-  completed: Boolean (default: false),
-  user: ObjectId (ref: User, required),
-  createdAt: Date,
-  updatedAt: Date
-}
-```
+**Error:** API error 500 di production
 
-## 🔐 Authentication Flow
+**Penyebab:** Environment variables tidak diset
 
-1. User register/login → Get JWT token
-2. Include token di header: `Authorization: Bearer <token>`
-3. Middleware validates token
-4. Extract user ID dari token
-5. Attach user to request object
-6. Routes can access `req.user`
+**Solusi:**
+1. Cek Vercel Functions logs
+2. Pastikan MONGODB_URI dan JWT_SECRET diset di Vercel
+3. Test connection string di local dulu
 
-## 🐛 Troubleshooting
+### Issue: CORS error
 
-### MongoDB Connection Error
+**Penyebab:** Backend tidak allow origin frontend
 
-**Error:** `MongooseServerSelectionError: Could not connect`
+**Solusi:**
+Backend sudah pakai middleware `cors()` tanpa restriction. Jika masih ada error:
+1. Cek browser console untuk detail
+2. Pastikan frontend dan backend sama-sama HTTPS atau HTTP
 
-**Solutions:**
-1. Verify `MONGODB_URI` di Vercel environment variables
-2. Check MongoDB Atlas IP whitelist:
-   - Go to MongoDB Atlas > Network Access
-   - Add IP: `0.0.0.0/0` (allow from anywhere)
-3. Verify database user credentials
-4. Check connection string format
+## Code Structure Explanation
 
-### JWT Authentication Error
+### api/index.js
+File ini adalah handler utama untuk Vercel Serverless Functions. Setiap request akan:
+1. Connect ke MongoDB
+2. Buat instance Express app baru
+3. Handle request dengan Express
 
-**Error:** `Invalid token` atau `Token expired`
+### src/app.js
+File ini berisi konfigurasi Express app:
+- Middleware (CORS, JSON parser)
+- Routes
+- Error handlers
+- MongoDB connection helper
 
-**Solutions:**
-1. Verify `JWT_SECRET` di Vercel environment variables
-2. Ensure JWT_SECRET is at least 32 characters
-3. Check token expiration time
-4. Verify token is sent in Authorization header
+### src/models/
+Berisi schema Mongoose untuk:
+- **User.js**: Model untuk user dengan email dan password (password di-hash otomatis)
+- **Todo.js**: Model untuk todo dengan title, completed status, dan relasi ke user
 
-### Root Directory Error
+### src/routes/
+Berisi route handlers:
+- **auth.js**: Register dan login endpoints
+- **todos.js**: CRUD endpoints untuk todos (protected dengan JWT)
 
-**Error:** `The specified Root Directory does not exist`
+### src/middleware/
+Berisi middleware:
+- **auth.js**: Middleware untuk verify JWT token dan protect routes
 
-**Solutions:**
-1. Go to Vercel Project > Settings > General
-2. Clear **Root Directory** field (biarkan kosong)
-3. Save settings
-4. Workflow menggunakan `working-directory` parameter
+## Tips untuk Newbie
 
-### Cold Start Issues
+### Cara Kerja JWT Authentication
 
-**Issue:** First request after inactivity is slow
+1. User register/login -> Server generate JWT token
+2. Frontend simpan token (localStorage)
+3. Setiap request ke protected endpoint, kirim token di Authorization header
+4. Backend verify token -> jika valid, allow request
+5. Token ada expiration (default 7 hari)
 
-**Solutions:**
-- Normal untuk serverless functions
-- Vercel keeps functions warm for active projects
-- Consider using Vercel Pro untuk better cold start performance
+### Cara Kerja Mongoose Models
 
-## 📖 API Documentation
+1. Define schema (struktur data)
+2. Mongoose otomatis create collection di MongoDB
+3. Pre-save hooks bisa jalankan function sebelum save (contoh: hash password)
+4. Methods bisa ditambah untuk custom logic (contoh: comparePassword)
 
-Swagger documentation tersedia di:
-- **Local:** http://localhost:3001/api-docs
-- **Production:** https://your-backend.vercel.app/api-docs
+### Cara Kerja Vercel Serverless
 
-Documentation includes:
-- All endpoints
-- Request/response schemas
-- Authentication requirements
-- Example requests
+1. Setiap request adalah function execution terpisah
+2. Tidak ada state yang persistent antar request
+3. Connection ke database harus dibuat per request (dengan caching)
+4. Function ada timeout limit (30 detik untuk free tier)
 
-## 🔗 Resources
+## Resources
 
 - [Express Documentation](https://expressjs.com)
 - [Mongoose Documentation](https://mongoosejs.com)
-- [Vercel Serverless Functions](https://vercel.com/docs/functions)
-- [JWT Best Practices](https://jwt.io/introduction)
-
+- [JWT Documentation](https://jwt.io)
+- [Vercel Documentation](https://vercel.com/docs)
+- [MongoDB Atlas Documentation](https://docs.atlas.mongodb.com)

@@ -5,28 +5,16 @@ import Todo from '../models/Todo.js';
 
 const router = express.Router();
 
-// All routes require authentication
+// Semua routes di file ini memerlukan authentication (JWT token)
 router.use(authenticate);
 
-/**
- * @swagger
- * /api/todos:
- *   get:
- *     summary: Get all todos for authenticated user
- *     tags: [Todos]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: List of todos
- */
+// GET /api/todos - Ambil semua todos milik user yang sedang login
 router.get('/', async (req, res) => {
-  console.log(`[TODOS] GET / - User: ${req.user?._id}, Path: ${req.path}`);
   try {
+    // Query todos berdasarkan user ID, sort by createdAt descending (terbaru dulu)
     const todos = await Todo.find({ user: req.user._id }).sort({
       createdAt: -1,
     });
-    console.log(`[TODOS] Found ${todos.length} todos, sending response...`);
     return res.json(todos);
   } catch (error) {
     console.error(`[TODOS] Error:`, error);
@@ -36,44 +24,28 @@ router.get('/', async (req, res) => {
   }
 });
 
-/**
- * @swagger
- * /api/todos:
- *   post:
- *     summary: Create a new todo
- *     tags: [Todos]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - title
- *             properties:
- *               title:
- *                 type: string
- *     responses:
- *       201:
- *         description: Todo created successfully
- */
+// POST /api/todos - Buat todo baru
 router.post(
   '/',
-  [body('title').trim().notEmpty()],
+  [
+    // Validasi: title tidak boleh kosong
+    body('title').trim().notEmpty()
+  ],
   async (req, res) => {
     try {
+      // Cek validasi input
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
       }
 
+      // Buat todo baru dengan title dari request dan user ID dari token
       const todo = new Todo({
         title: req.body.title,
         user: req.user._id,
       });
       await todo.save();
+      
       return res.status(201).json(todo);
     } catch (error) {
       console.error('[TODOS] Create error:', error);
@@ -84,38 +56,10 @@ router.post(
   }
 );
 
-/**
- * @swagger
- * /api/todos/{id}:
- *   put:
- *     summary: Update a todo
- *     tags: [Todos]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               title:
- *                 type: string
- *               completed:
- *                 type: boolean
- *     responses:
- *       200:
- *         description: Todo updated successfully
- *       404:
- *         description: Todo not found
- */
+// PUT /api/todos/:id - Update todo (title atau completed status)
 router.put('/:id', async (req, res) => {
   try {
+    // Cari todo berdasarkan ID dan user ID (pastikan user hanya bisa update todo miliknya)
     const todo = await Todo.findOne({
       _id: req.params.id,
       user: req.user._id,
@@ -125,6 +69,7 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Todo not found' });
     }
 
+    // Update field yang dikirim (title atau completed)
     if (req.body.title !== undefined) todo.title = req.body.title;
     if (req.body.completed !== undefined) todo.completed = req.body.completed;
 
@@ -138,28 +83,10 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-/**
- * @swagger
- * /api/todos/{id}:
- *   delete:
- *     summary: Delete a todo
- *     tags: [Todos]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Todo deleted successfully
- *       404:
- *         description: Todo not found
- */
+// DELETE /api/todos/:id - Hapus todo
 router.delete('/:id', async (req, res) => {
   try {
+    // Cari dan hapus todo berdasarkan ID dan user ID
     const todo = await Todo.findOneAndDelete({
       _id: req.params.id,
       user: req.user._id,

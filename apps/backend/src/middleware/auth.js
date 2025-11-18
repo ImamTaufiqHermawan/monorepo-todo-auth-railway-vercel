@@ -1,36 +1,40 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 
+// Middleware untuk authenticate request menggunakan JWT token
+// Digunakan untuk protect routes yang memerlukan login
 export const authenticate = async (req, res, next) => {
-  console.log(`[AUTH] Authenticating request: ${req.method} ${req.path} - URL: ${req.url} - OriginalURL: ${req.originalUrl}`);
   try {
+    // Ambil Authorization header dari request
     const authHeader = req.headers.authorization;
-    console.log(`[AUTH] Authorization header: ${authHeader ? authHeader.substring(0, 20) + '...' : 'missing'}`);
     
+    // Extract token dari format "Bearer <token>"
     const token = authHeader?.replace(/^Bearer\s+/i, '').trim();
-    console.log(`[AUTH] Token extracted: ${token ? token.substring(0, 20) + '...' : 'missing'}`);
 
+    // Jika tidak ada token, tolak request
     if (!token) {
-      console.log(`[AUTH] ❌ No token provided`);
       return res.status(401).json({ error: 'Authentication required' });
     }
 
+    // Verify token menggunakan JWT_SECRET
+    // Jika token invalid atau expired, akan throw error
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log(`[AUTH] Token decoded, userId: ${decoded.userId}`);
     
+    // Cari user di database berdasarkan userId dari token
     const user = await User.findById(decoded.userId);
-    console.log(`[AUTH] User found: ${!!user}`);
 
+    // Jika user tidak ditemukan (mungkin sudah dihapus), tolak request
     if (!user) {
-      console.log(`[AUTH] ❌ User not found`);
       return res.status(401).json({ error: 'User not found' });
     }
 
+    // Simpan user object ke request untuk digunakan di route handler
     req.user = user;
-    console.log(`[AUTH] ✅ Authentication successful, calling next()`);
+    
+    // Lanjutkan ke handler berikutnya
     next();
   } catch (error) {
-    console.error(`[AUTH] ❌ Authentication error:`, error.message);
+    // Jika terjadi error (token invalid, expired, dll), tolak request
     if (!res.headersSent) {
       res.status(401).json({ error: 'Invalid token' });
     }

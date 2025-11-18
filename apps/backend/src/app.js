@@ -2,9 +2,6 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
-// Swagger imports - lazy load untuk menghindari blocking
-// import swaggerJsdoc from "swagger-jsdoc";
-// import swaggerUi from "swagger-ui-express";
 import authRoutes from "./routes/auth.js";
 import todoRoutes from "./routes/todos.js";
 
@@ -13,59 +10,13 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Swagger configuration - lazy load untuk menghindari blocking
-let swaggerSpec = null;
-const getSwaggerSpec = async () => {
-  if (!swaggerSpec) {
-    const swaggerJsdoc = (await import('swagger-jsdoc')).default;
-    const swaggerOptions = {
-      definition: {
-        openapi: "3.1.0",
-        info: {
-          title: "Todo API",
-          version: "1.0.0",
-          description: "Todo Application API with Authentication",
-        },
-        servers: [
-          {
-            url: process.env.API_URL || `http://localhost:${PORT}`,
-            description: "API server",
-          },
-        ],
-        components: {
-          securitySchemes: {
-            bearerAuth: {
-              type: "http",
-              scheme: "bearer",
-              bearerFormat: "JWT",
-            },
-          },
-        },
-      },
-      apis: ["./src/routes/*.js"],
-    };
-    swaggerSpec = swaggerJsdoc(swaggerOptions);
-  }
-  return swaggerSpec;
-};
-
-// Middleware
+// Middleware CORS untuk mengizinkan request dari frontend
 app.use(cors());
+
+// Middleware untuk parsing JSON body dengan limit 10mb
 app.use(express.json({ limit: '10mb' }));
 
-// Request logging middleware
-app.use((req, res, next) => {
-  console.log(`[EXPRESS] ${req.method} ${req.path} - URL: ${req.url} - OriginalURL: ${req.originalUrl}`);
-  console.log(`[EXPRESS] Headers:`, {
-    authorization: req.headers.authorization ? 'present' : 'missing',
-    contentType: req.headers['content-type'] || 'none'
-  });
-  
-  // Don't intercept res.end here - api/index.js handles it
-  next();
-});
-
-// Handle favicon requests early
+// Handle request favicon agar tidak error 404
 app.get('/favicon.ico', (req, res) => {
   res.status(204).end();
 });
@@ -74,39 +25,7 @@ app.get('/favicon.png', (req, res) => {
   res.status(204).end();
 });
 
-// Swagger UI - disabled untuk testing, enable jika diperlukan
-// Swagger UI bisa menyebabkan blocking di serverless
-if (process.env.ENABLE_SWAGGER === 'true') {
-  app.get("/api-docs", async (req, res, next) => {
-    try {
-      const swaggerUiModule = await import('swagger-ui-express');
-      const spec = await getSwaggerSpec();
-      swaggerUiModule.default.setup(spec, {
-        customCss: '.swagger-ui .topbar { display: none }',
-        customSiteTitle: "Todo API Documentation"
-      })(req, res, next);
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to load Swagger UI' });
-    }
-  });
-} else {
-  app.get("/api-docs", async (req, res) => {
-    try {
-      const spec = await getSwaggerSpec();
-      res.json({ 
-        message: "Swagger UI disabled. Set ENABLE_SWAGGER=true to enable.",
-        spec 
-      });
-    } catch (error) {
-      res.json({ 
-        message: "Swagger UI disabled. Set ENABLE_SWAGGER=true to enable.",
-        error: error.message 
-      });
-    }
-  });
-}
-
-// Root endpoint
+// Root endpoint - menampilkan informasi API
 app.get("/", (req, res) => {
   res.json({
     message: "Todo API Backend",
@@ -114,16 +33,13 @@ app.get("/", (req, res) => {
     endpoints: {
       health: "/health",
       healthChecks: "/health-checks",
-      apiDocs: "/api-docs",
       auth: {
         register: "POST /api/auth/register",
         login: "POST /api/auth/login",
-        profile: "GET /api/auth/profile",
       },
       todos: {
         list: "GET /api/todos",
         create: "POST /api/todos",
-        get: "GET /api/todos/:id",
         update: "PUT /api/todos/:id",
         delete: "DELETE /api/todos/:id",
       },
@@ -132,9 +48,8 @@ app.get("/", (req, res) => {
   });
 });
 
-// Health check - super simple, no blocking
+// Health check sederhana untuk monitoring
 app.get("/health", (req, res) => {
-  // Immediately send response, no async operations
   res.status(200).json({
     status: "ok",
     timestamp: new Date().toISOString(),
@@ -142,22 +57,21 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Detailed health checks
+// Health check detail - cek database, memory, dan environment
 app.get("/health-checks", async (req, res) => {
   const health = {
     status: "ok",
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || "development",
-    version: process.env.npm_package_version || "1.0.0",
     checks: {
       api: {
         status: "ok",
-        message: "API is running",
+        message: "API berjalan normal",
       },
       database: {
         status: "unknown",
-        message: "Checking database connection...",
+        message: "Mengecek koneksi database...",
       },
       memory: {
         status: "ok",
@@ -168,24 +82,24 @@ app.get("/health-checks", async (req, res) => {
     },
   };
 
-  // Check database connection
+  // Cek status koneksi database MongoDB
   try {
     if (mongoose.connection.readyState === 1) {
       health.checks.database = {
         status: "ok",
-        message: "Database connected",
+        message: "Database terkoneksi",
         state: "connected",
       };
     } else if (mongoose.connection.readyState === 2) {
       health.checks.database = {
         status: "warning",
-        message: "Database connecting",
+        message: "Database sedang connecting",
         state: "connecting",
       };
     } else {
       health.checks.database = {
         status: "error",
-        message: "Database not connected",
+        message: "Database tidak terkoneksi",
         state: "disconnected",
       };
       health.status = "degraded";
@@ -199,14 +113,14 @@ app.get("/health-checks", async (req, res) => {
     health.status = "degraded";
   }
 
-  // Check environment variables
+  // Cek environment variables yang diperlukan
   const requiredEnvVars = ["MONGODB_URI", "JWT_SECRET"];
   const missingEnvVars = requiredEnvVars.filter((key) => !process.env[key]);
   
   if (missingEnvVars.length > 0) {
     health.checks.environment = {
       status: "warning",
-      message: `Missing environment variables: ${missingEnvVars.join(", ")}`,
+      message: `Environment variables yang hilang: ${missingEnvVars.join(", ")}`,
       missing: missingEnvVars,
     };
     if (health.status === "ok") {
@@ -215,21 +129,19 @@ app.get("/health-checks", async (req, res) => {
   } else {
     health.checks.environment = {
       status: "ok",
-      message: "All required environment variables are set",
+      message: "Semua environment variables sudah diset",
     };
   }
 
-  // Set HTTP status code based on health status
   const statusCode = health.status === "ok" ? 200 : health.status === "degraded" ? 200 : 503;
-
   res.status(statusCode).json(health);
 });
 
-// Routes
+// Routes untuk authentication dan todos
 app.use("/api/auth", authRoutes);
 app.use("/api/todos", todoRoutes);
 
-// Error handling middleware - MUST be after all routes
+// Error handling middleware - harus setelah semua routes
 app.use((err, req, res, next) => {
   console.error('[ERROR]', err.stack);
   if (!res.headersSent) {
@@ -237,23 +149,18 @@ app.use((err, req, res, next) => {
       error: err.message || "Internal server error",
     });
   }
-  // If headers already sent, delegate to default Express error handler
   next(err);
 });
 
-// 404 handler - MUST be last, after all routes and error handlers
+// 404 handler - harus paling terakhir
 app.use((req, res) => {
   if (!res.headersSent) {
     return res.status(404).json({
       error: "Route not found",
-      message: `The requested endpoint ${req.method} ${req.path} does not exist`,
-      path: req.path,
-      method: req.method,
-      url: req.url,
+      message: `Endpoint ${req.method} ${req.path} tidak ditemukan`,
       availableEndpoints: {
         health: "GET /health",
         healthChecks: "GET /health-checks",
-        apiDocs: "GET /api-docs",
         auth: {
           register: "POST /api/auth/register",
           login: "POST /api/auth/login",
@@ -270,37 +177,32 @@ app.use((req, res) => {
   }
 });
 
-// MongoDB connection helper
+// Helper untuk koneksi MongoDB
+// Flag untuk tracking apakah sudah terkoneksi (penting untuk serverless)
 let isConnected = false;
 
 export const connectDB = async () => {
+  // Jika sudah terkoneksi, skip
   if (isConnected) {
-    console.log("MongoDB already connected");
     return;
   }
 
-  // Check if already connecting
+  // Cek readyState: 1 = connected, 2 = connecting, 0 = disconnected
   if (mongoose.connection.readyState === 1) {
     isConnected = true;
-    console.log("MongoDB already connected (readyState: 1)");
     return;
   }
 
+  // Jika sedang proses connecting, tunggu sampai selesai
   if (mongoose.connection.readyState === 2) {
-    console.log("MongoDB connection in progress (readyState: 2)");
-    // Wait for the connection to complete
-    // Don't return immediately - wait for it
     return new Promise((resolve, reject) => {
       const checkConnection = () => {
         if (mongoose.connection.readyState === 1) {
           isConnected = true;
-          console.log("MongoDB connection completed (readyState: 1)");
           resolve();
         } else if (mongoose.connection.readyState === 0) {
-          // Connection failed
           reject(new Error("MongoDB connection failed"));
         } else {
-          // Still connecting, check again
           setTimeout(checkConnection, 100);
         }
       };
@@ -311,60 +213,35 @@ export const connectDB = async () => {
   const mongoUri = process.env.MONGODB_URI;
 
   if (!mongoUri) {
-    const error = new Error("MONGODB_URI environment variable is not set");
-    console.error("❌", error.message);
-    throw error;
+    throw new Error("MONGODB_URI environment variable tidak diset");
   }
-
-  console.log(`Attempting to connect to MongoDB...`);
-  console.log(
-    `MongoDB URI: ${mongoUri.replace(/\/\/([^:]+):([^@]+)@/, "//$1:***@")}`
-  );
 
   try {
     await mongoose.connect(mongoUri, {
-      serverSelectionTimeoutMS: 5000, // 5 seconds - increased for reliability
-      socketTimeoutMS: 45000, // 45 seconds
-      connectTimeoutMS: 5000, // 5 seconds
-      maxPoolSize: 1, // Single connection for serverless
+      serverSelectionTimeoutMS: 5000,  // Timeout 5 detik untuk select server
+      socketTimeoutMS: 45000,           // Timeout 45 detik untuk socket
+      connectTimeoutMS: 5000,           // Timeout 5 detik untuk initial connect
+      maxPoolSize: 1,                   // Single connection untuk serverless
       minPoolSize: 1,
     });
     isConnected = true;
-    console.log("✅ Connected to MongoDB successfully");
+    console.log("MongoDB terkoneksi");
   } catch (error) {
-    console.error("❌ MongoDB connection error:");
-    console.error("Error message:", error.message);
-    console.error("Error name:", error.name);
-    if (error.message.includes("authentication failed")) {
-      console.error("💡 Tip: Check your MongoDB credentials in MONGODB_URI");
-    } else if (
-      error.message.includes("ENOTFOUND") ||
-      error.message.includes("getaddrinfo")
-    ) {
-      console.error("💡 Tip: Check your MongoDB connection string format");
-    } else if (error.message.includes("timeout")) {
-      console.error(
-        "💡 Tip: MongoDB server might be unreachable or network issue"
-      );
-    }
-    console.error("Full error:", error);
+    console.error("MongoDB connection error:", error.message);
     throw error;
   }
 };
 
-// Start server (only for traditional deployment)
+// Start server untuk development lokal
 export const startServer = async () => {
   try {
     await connectDB();
     app.listen(PORT, "0.0.0.0", () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📚 API Documentation: http://0.0.0.0:${PORT}/api-docs`);
-      console.log(`❤️  Health check: http://0.0.0.0:${PORT}/health`);
+      console.log(`Server berjalan di port ${PORT}`);
+      console.log(`Health check: http://0.0.0.0:${PORT}/health`);
     });
   } catch (error) {
-    console.error(
-      "⚠️  Application will exit. Please check your MONGODB_URI environment variable."
-    );
+    console.error("Gagal start server. Cek MONGODB_URI di file .env");
     process.exit(1);
   }
 };
