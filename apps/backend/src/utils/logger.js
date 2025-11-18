@@ -28,10 +28,9 @@ const logger = winston.createLogger({
     environment: process.env.NODE_ENV || 'development'
   },
   transports: [
-    // Console transport untuk development dan production
+    // Console transport - tanpa colorize di production untuk Vercel
     new winston.transports.Console({
       format: winston.format.combine(
-        winston.format.colorize({ all: true }),
         winston.format.timestamp({
           format: 'YYYY-MM-DD HH:mm:ss'
         }),

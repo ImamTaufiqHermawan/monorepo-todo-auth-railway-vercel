@@ -12,14 +12,15 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware untuk logging semua request
-app.use(requestLogger);
-
-// Middleware CORS untuk mengizinkan request dari frontend
+// Middleware CORS untuk mengizinkan request dari frontend (harus paling awal)
 app.use(cors());
 
 // Middleware untuk parsing JSON body dengan limit 10mb
 app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+
+// Middleware untuk logging semua request
+app.use(requestLogger);
 
 // Handle request favicon agar tidak error 404
 app.get('/favicon.ico', (req, res) => {
@@ -166,71 +167,19 @@ app.use((err, req, res, next) => {
 
 // 404 handler - harus paling terakhir
 // Handler untuk semua route yang tidak ditemukan
-app.use((req, res) => {
-  if (!res.headersSent) {
-    return res.status(404).json({
-      success: false,
-      error: "Not Found",
-      message: `Endpoint ${req.method} ${req.path} tidak ditemukan`,
-      path: req.path,
-      method: req.method,
-      availableEndpoints: {
-        root: {
-          method: "GET",
-          path: "/",
-          description: "API information"
-        },
-        health: {
-          method: "GET",
-          path: "/health",
-          description: "Simple health check"
-        },
-        healthChecks: {
-          method: "GET",
-          path: "/health-checks",
-          description: "Detailed health check"
-        },
-        auth: {
-          register: {
-            method: "POST",
-            path: "/api/auth/register",
-            description: "Register new user"
-          },
-          login: {
-            method: "POST",
-            path: "/api/auth/login",
-            description: "Login user"
-          }
-        },
-        todos: {
-          list: {
-            method: "GET",
-            path: "/api/todos",
-            description: "Get all todos (requires auth)"
-          },
-          create: {
-            method: "POST",
-            path: "/api/todos",
-            description: "Create new todo (requires auth)"
-          },
-          update: {
-            method: "PUT",
-            path: "/api/todos/:id",
-            description: "Update todo (requires auth)"
-          },
-          delete: {
-            method: "DELETE",
-            path: "/api/todos/:id",
-            description: "Delete todo (requires auth)"
-          }
-        }
-      },
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
-// Helper untuk koneksi MongoDB
+app.use((req, res, next) => {
+  // Set Content-Type ke JSON untuk mencegah HTML response
+  res.setHeader('Content-Type', 'application/json');
+  
+  return res.status(404).json({
+    success: false,
+    error: "Not Found",
+    message: `Endpoint ${req.method} ${req.path} tidak ditemukan`,
+    path: req.path,
+    method: req.method,
+    timestamp: new Date().toISOString()
+  });
+});// Helper untuk koneksi MongoDB
 // Flag untuk tracking apakah sudah terkoneksi (penting untuk serverless)
 let isConnected = false;
 
