@@ -149,10 +149,75 @@ Server frontend akan berjalan di: http://localhost:5173
 
 ### 6. Testing API
 
+**Menggunakan Browser:**
+
 Buka browser dan akses:
 - Frontend: http://localhost:5173
 - Backend Health: http://localhost:3001/health
 - Backend API Info: http://localhost:3001
+
+**Menggunakan Postman:**
+
+1. Download dan install Postman dari https://www.postman.com/downloads/
+2. Buka Postman
+3. Klik "Import" di pojok kiri atas
+4. Pilih tab "File"
+5. Klik "Choose Files" atau drag & drop file `todo-api.postman_collection.json` dari root project
+6. Klik "Import"
+7. Collection "Todo API - Vercel" akan muncul di sidebar kiri
+8. Expand collection untuk melihat semua endpoints
+
+**Cara Test dengan Postman:**
+
+Step 1: Test Health Check
+- Klik "Health Check" > "Root - API Info"
+- Klik tombol "Send"
+- Verifikasi response berisi informasi API
+
+Step 2: Register User Baru
+- Klik "Auth" > "Register"
+- Di tab "Body", edit email dan password sesuai kebutuhan
+- Klik "Send"
+- Verifikasi response status 201 dan dapat token
+
+Step 3: Login
+- Klik "Auth" > "Login"
+- Edit email dan password (sama dengan yang digunakan saat register)
+- Klik "Send"
+- Token akan otomatis disimpan ke variable `auth_token`
+- Verifikasi response status 200
+
+Step 4: Test Todos Endpoints (Butuh Token)
+- Klik "Todos" > "Get All Todos"
+- Token sudah otomatis ditambahkan di Authorization header
+- Klik "Send"
+- Verifikasi response berisi array todos (kosong jika belum ada)
+
+Step 5: Create Todo
+- Klik "Todos" > "Create Todo"
+- Edit title di body request
+- Klik "Send"
+- Copy `_id` dari response untuk testing update/delete
+
+Step 6: Update Todo
+- Klik "Todos" > "Update Todo"
+- Klik tab "Params"
+- Ganti `:id` dengan todo ID yang di-copy tadi
+- Edit title atau completed di body request
+- Klik "Send"
+
+Step 7: Delete Todo
+- Klik "Todos" > "Delete Todo"
+- Ganti `:id` dengan todo ID
+- Klik "Send"
+
+**Ganti Base URL untuk Production:**
+
+Setelah deploy ke Vercel, update base URL:
+1. Klik collection "Todo API - Vercel"
+2. Klik tab "Variables"
+3. Ganti value `base_url` dari `http://localhost:3001` ke URL Vercel (contoh: `https://your-backend.vercel.app`)
+4. Klik "Save"
 
 ## Deployment ke Vercel
 

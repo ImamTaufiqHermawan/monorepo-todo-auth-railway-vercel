@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Todo API",
-    "description": "Todo Application API Collection",
+    "name": "Todo API - Vercel",
+    "description": "Todo Application API Collection untuk Backend di Vercel",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -15,6 +15,47 @@
     ]
   },
   "item": [
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "Root - API Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/",
+              "host": ["{{base_url}}"],
+              "path": [""]
+            }
+          }
+        },
+        {
+          "name": "Health - Simple",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Health - Detailed",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health-checks",
+              "host": ["{{base_url}}"],
+              "path": ["health-checks"]
+            }
+          }
+        }
+      ]
+    },
     {
       "name": "Auth",
       "item": [
@@ -162,11 +203,13 @@
   "variable": [
     {
       "key": "base_url",
-      "value": "https://your-backend.railway.app"
+      "value": "http://localhost:3001",
+      "type": "string"
     },
     {
       "key": "auth_token",
-      "value": ""
+      "value": "",
+      "type": "string"
     }
   ]
 }

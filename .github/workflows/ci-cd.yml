@@ -36,7 +36,7 @@ jobs:
     name: Build Frontend
     needs: test
     runs-on: ubuntu-latest
-    if: false  # Disabled - Frontend not being updated
+    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -66,7 +66,7 @@ jobs:
     name: Deploy Frontend to Vercel
     needs: build-frontend
     runs-on: ubuntu-latest
-    if: false  # Disabled - Frontend not being updated
+    if: github.ref == 'refs/heads/main'
     environment: production
     steps:
       - uses: actions/checkout@v4
@@ -426,19 +426,28 @@ jobs:
 
   notify:
     name: Deployment Notification
-    needs: [deploy-backend-vercel]  # Removed deploy-frontend-vercel
+    needs: [deploy-frontend-vercel, deploy-backend-vercel]
     runs-on: ubuntu-latest
     if: always() && github.ref == 'refs/heads/main'
     steps:
       - name: Deployment Status
         run: |
+          FRONTEND_STATUS="${{ needs.deploy-frontend-vercel.result }}"
           BACKEND_STATUS="${{ needs.deploy-backend-vercel.result }}"
 
-          if [ "$BACKEND_STATUS" == "success" ]; then
-            echo "✅ Backend deployed successfully"
+          echo "Frontend deployment status: $FRONTEND_STATUS"
+          echo "Backend deployment status: $BACKEND_STATUS"
+
+          if [ "$FRONTEND_STATUS" == "success" ] && [ "$BACKEND_STATUS" == "success" ]; then
+            echo "Semua deployment berhasil"
+            exit 0
+          elif [ "$FRONTEND_STATUS" == "success" ]; then
+            echo "Frontend berhasil, Backend gagal"
+            exit 1
+          elif [ "$BACKEND_STATUS" == "success" ]; then
+            echo "Backend berhasil, Frontend gagal"
+            exit 1
           else
-            echo "❌ Backend deployment failed"
+            echo "Semua deployment gagal"
             exit 1
           fi
-          
-          echo "ℹ️  Frontend deployment skipped (not updated)"

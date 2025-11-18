@@ -1,7 +1,7 @@
 {
-  "name": "monorepo-todo-auth-railway-vercel-imam",
+  "name": "monorepo-todo-auth-vercel-finished",
   "version": "1.0.0",
-  "description": "Fullstack Todo application with authentication - Railway + Vercel",
+  "description": "Fullstack Todo application with authentication - Vercel",
   "private": true,
   "workspaces": [
     "apps/*",
