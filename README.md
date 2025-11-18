@@ -446,13 +446,40 @@ pnpm --filter frontend build
 
 ## Testing
 
+Project ini dilengkapi dengan comprehensive testing setup:
+
+- **Backend**: 104 unit tests (Jest + Supertest)
+- **Frontend**: E2E tests (Playwright)
+
+### Quick Start
+
 ```bash
-# Run semua tests
+# Backend unit tests
+cd apps/backend
 pnpm test
 
-# Test backend saja
-pnpm --filter backend test
+# Frontend E2E tests (pastikan backend running)
+cd apps/frontend
+pnpm test:e2e
 ```
+
+### Detailed Documentation
+
+Untuk setup lengkap, troubleshooting, dan advanced testing:
+
+📖 **[TESTING-GUIDE.md](./TESTING-GUIDE.md)** - Comprehensive testing documentation
+
+#### Backend Tests
+- **Location**: [`apps/backend/tests/`](./apps/backend/tests/)
+- **Documentation**: [`apps/backend/TESTING.md`](./apps/backend/TESTING.md)
+- **Coverage**: Models, Routes, Middleware
+
+#### Frontend E2E Tests
+- **Location**: [`apps/frontend/e2e/`](./apps/frontend/e2e/)
+- **Documentation**: [`apps/frontend/E2E-TESTING.md`](./apps/frontend/E2E-TESTING.md)
+- **Flow**: Register → CRUD → Logout → Login
+
+**Note**: Known issues dengan Jest + ESM di Windows. Test files sudah lengkap dan valid, hanya ada compatibility issues. Lihat TESTING.md untuk details.
 
 ## Troubleshooting
 

@@ -8,9 +8,10 @@
     "dev": "node --watch src/index.js",
     "build": "mkdir -p dist && echo 'No build step needed for Node.js' > dist/.build-complete",
     "start": "node src/index.js",
-    "test": "node --test tests/**/*.test.js",
-    "test:unit": "node --test tests/unit/**/*.test.js",
-    "test:integration": "node --test tests/integration/**/*.test.js",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --verbose --runInBand",
+    "test:unit": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/unit --coverage --runInBand",
+    "test:integration": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/integration --coverage",
+    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
     "lint": "echo 'Linting not configured'"
   },
   "dependencies": {
@@ -25,7 +26,11 @@
     "winston": "^3.18.3"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0"
+    "@types/jest": "^29.5.12",
+    "@types/node": "^22.0.0",
+    "@types/supertest": "^6.0.2",
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0"
   },
   "engines": {
     "node": ">=22.0.0"
