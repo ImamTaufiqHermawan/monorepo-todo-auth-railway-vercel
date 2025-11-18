@@ -290,6 +290,130 @@ Setelah setup secrets, setiap push ke branch `main` akan otomatis:
 3. Deploy frontend ke Vercel
 4. Deploy backend ke Vercel
 
+## Logging Configuration
+
+Aplikasi ini menggunakan **Winston** untuk detailed logging yang dapat dilihat di Vercel atau console development.
+
+### Log Levels
+- `error` - Error dan exceptions (status code >= 500)
+- `warn` - Warning (status code >= 400)
+- `http` - HTTP requests (status code 2xx-3xx)
+- `info` - Informasi umum
+- `debug` - Debug information
+
+### Environment Variable
+```env
+LOG_LEVEL=info  # Optional, default: info
+                # Options: error, warn, info, http, debug
+```
+
+### Format Log
+Setiap log memiliki format:
+```
+2024-01-15 10:30:45 [INFO]: Message
+{
+  "metadata": "additional context"
+}
+```
+
+### Log Types
+
+**HTTP Request Logs:**
+```json
+{
+  "method": "POST",
+  "url": "/api/todos",
+  "status": 201,
+  "duration": "45ms",
+  "ip": "127.0.0.1",
+  "userAgent": "PostmanRuntime/7.28.4"
+}
+```
+
+**Database Operation Logs:**
+```json
+{
+  "operation": "create",
+  "collection": "todos",
+  "userId": "65a1b2c3d4e5f6789012345",
+  "details": {...}
+}
+```
+
+**Authentication Logs:**
+```json
+{
+  "action": "login_success",
+  "userId": "65a1b2c3d4e5f6789012345",
+  "email": "user@example.com"
+}
+```
+
+**Error Logs (dengan stack trace):**
+```json
+{
+  "message": "Error message",
+  "stack": "Error: ...\n    at ...",
+  "context": "additional_context"
+}
+```
+
+### Melihat Logs di Vercel
+1. Go to Vercel Dashboard
+2. Pilih project backend
+3. Klik tab "Logs"
+4. Logs akan muncul real-time dengan warna dan format yang rapi
+
+## 404 Error Handling
+
+Semua endpoint yang tidak ditemukan akan mengembalikan response JSON yang jelas:
+
+### Response Format
+```json
+{
+  "success": false,
+  "error": "Not Found",
+  "message": "Endpoint GET /api/invalid tidak ditemukan",
+  "path": "/api/invalid",
+  "method": "GET",
+  "availableEndpoints": {
+    "root": {
+      "method": "GET",
+      "path": "/",
+      "description": "API information"
+    },
+    "health": {
+      "method": "GET",
+      "path": "/health",
+      "description": "Simple health check"
+    },
+    "auth": {
+      "register": {
+        "method": "POST",
+        "path": "/api/auth/register",
+        "description": "Register new user"
+      },
+      "login": {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "description": "Login user"
+      }
+    },
+    "todos": {
+      "list": {
+        "method": "GET",
+        "path": "/api/todos",
+        "description": "Get all todos (requires auth)"
+      }
+    }
+  },
+  "timestamp": "2024-01-15T10:30:45.123Z"
+}
+```
+
+### Testing 404 Response
+Gunakan Postman collection yang sudah disediakan di folder "Error Handling" untuk test 404 response.
+
 ## API Endpoints
 
 ### Authentication
@@ -303,6 +427,7 @@ Setelah setup secrets, setiap push ke branch `main` akan otomatis:
 - `DELETE /api/todos/:id` - Delete todo
 
 ### Health Check
+- `GET /` - API information
 - `GET /health` - Simple health check
 - `GET /health-checks` - Detailed health check
 

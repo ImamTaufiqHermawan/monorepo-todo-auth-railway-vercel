@@ -4,11 +4,16 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import authRoutes from "./routes/auth.js";
 import todoRoutes from "./routes/todos.js";
+import { requestLogger } from "./middleware/requestLogger.js";
+import { logInfo, logError, logDB } from "./utils/logger.js";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Middleware untuk logging semua request
+app.use(requestLogger);
 
 // Middleware CORS untuk mengizinkan request dari frontend
 app.use(cors());
@@ -143,36 +148,84 @@ app.use("/api/todos", todoRoutes);
 
 // Error handling middleware - harus setelah semua routes
 app.use((err, req, res, next) => {
-  console.error('[ERROR]', err.stack);
+  logError(err, {
+    method: req.method,
+    url: req.originalUrl,
+    ip: req.ip
+  });
+  
   if (!res.headersSent) {
     return res.status(err.status || 500).json({
+      success: false,
       error: err.message || "Internal server error",
+      timestamp: new Date().toISOString()
     });
   }
   next(err);
 });
 
 // 404 handler - harus paling terakhir
+// Handler untuk semua route yang tidak ditemukan
 app.use((req, res) => {
   if (!res.headersSent) {
     return res.status(404).json({
-      error: "Route not found",
+      success: false,
+      error: "Not Found",
       message: `Endpoint ${req.method} ${req.path} tidak ditemukan`,
+      path: req.path,
+      method: req.method,
       availableEndpoints: {
-        health: "GET /health",
-        healthChecks: "GET /health-checks",
+        root: {
+          method: "GET",
+          path: "/",
+          description: "API information"
+        },
+        health: {
+          method: "GET",
+          path: "/health",
+          description: "Simple health check"
+        },
+        healthChecks: {
+          method: "GET",
+          path: "/health-checks",
+          description: "Detailed health check"
+        },
         auth: {
-          register: "POST /api/auth/register",
-          login: "POST /api/auth/login",
+          register: {
+            method: "POST",
+            path: "/api/auth/register",
+            description: "Register new user"
+          },
+          login: {
+            method: "POST",
+            path: "/api/auth/login",
+            description: "Login user"
+          }
         },
         todos: {
-          list: "GET /api/todos",
-          create: "POST /api/todos",
-          update: "PUT /api/todos/:id",
-          delete: "DELETE /api/todos/:id",
-        },
+          list: {
+            method: "GET",
+            path: "/api/todos",
+            description: "Get all todos (requires auth)"
+          },
+          create: {
+            method: "POST",
+            path: "/api/todos",
+            description: "Create new todo (requires auth)"
+          },
+          update: {
+            method: "PUT",
+            path: "/api/todos/:id",
+            description: "Update todo (requires auth)"
+          },
+          delete: {
+            method: "DELETE",
+            path: "/api/todos/:id",
+            description: "Delete todo (requires auth)"
+          }
+        }
       },
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     });
   }
 });

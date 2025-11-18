@@ -2,6 +2,7 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import { logAuth, logError } from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -26,6 +27,7 @@ router.post(
       // Cek apakah email sudah terdaftar
       const existingUser = await User.findOne({ email });
       if (existingUser) {
+        logAuth('register_failed', { email, reason: 'Email already registered' });
         return res.status(400).json({ error: 'Email already registered' });
       }
 
@@ -40,6 +42,8 @@ router.post(
         { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
       );
 
+      logAuth('register_success', { userId: user._id, email: user.email });
+
       // Return success response dengan token
       return res.status(201).json({
         message: 'User registered successfully',
@@ -47,7 +51,7 @@ router.post(
         user: { id: user._id, email: user.email },
       });
     } catch (error) {
-      console.error('[AUTH] Register error:', error);
+      logError(error, { context: 'auth_register', email: req.body.email });
       if (!res.headersSent) {
         return res.status(500).json({ error: error.message || 'Internal server error' });
       }
@@ -76,12 +80,14 @@ router.post(
       // Cari user berdasarkan email
       const user = await User.findOne({ email });
       if (!user) {
+        logAuth('login_failed', { email, reason: 'User not found' });
         return res.status(401).json({ error: 'Invalid credentials' });
       }
 
       // Verify password menggunakan method comparePassword dari User model
       const isMatch = await user.comparePassword(password);
       if (!isMatch) {
+        logAuth('login_failed', { userId: user._id, email, reason: 'Invalid password' });
         return res.status(401).json({ error: 'Invalid credentials' });
       }
 
@@ -92,6 +98,8 @@ router.post(
         { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
       );
 
+      logAuth('login_success', { userId: user._id, email: user.email });
+
       // Return success response dengan token
       return res.json({
         message: 'Login successful',
@@ -99,7 +107,7 @@ router.post(
         user: { id: user._id, email: user.email },
       });
     } catch (error) {
-      console.error('[AUTH] Login error:', error);
+      logError(error, { context: 'auth_login', email: req.body.email });
       if (!res.headersSent) {
         return res.status(500).json({ error: error.message || 'Internal server error' });
       }

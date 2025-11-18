@@ -198,6 +198,46 @@
           }
         }
       ]
+    },
+    {
+      "name": "Error Handling",
+      "item": [
+        {
+          "name": "404 - Not Found",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/invalid-endpoint",
+              "host": ["{{base_url}}"],
+              "path": ["api", "invalid-endpoint"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "404 - POST Invalid Route",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/non-existent",
+              "host": ["{{base_url}}"],
+              "path": ["api", "non-existent"]
+            }
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [

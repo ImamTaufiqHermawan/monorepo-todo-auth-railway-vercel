@@ -2,6 +2,7 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { authenticate } from '../middleware/auth.js';
 import Todo from '../models/Todo.js';
+import { logDB, logError, logInfo } from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -15,9 +16,10 @@ router.get('/', async (req, res) => {
     const todos = await Todo.find({ user: req.user._id }).sort({
       createdAt: -1,
     });
+    logDB('find', { collection: 'todos', userId: req.user._id, count: todos.length });
     return res.json(todos);
   } catch (error) {
-    console.error(`[TODOS] Error:`, error);
+    logError(error, { context: 'todos_list', userId: req.user._id });
     if (!res.headersSent) {
       return res.status(500).json({ error: error.message || 'Internal server error' });
     }
@@ -46,9 +48,10 @@ router.post(
       });
       await todo.save();
       
+      logDB('create', { collection: 'todos', todoId: todo._id, userId: req.user._id, title: todo.title });
       return res.status(201).json(todo);
     } catch (error) {
-      console.error('[TODOS] Create error:', error);
+      logError(error, { context: 'todos_create', userId: req.user._id });
       if (!res.headersSent) {
         return res.status(500).json({ error: error.message || 'Internal server error' });
       }
@@ -74,9 +77,10 @@ router.put('/:id', async (req, res) => {
     if (req.body.completed !== undefined) todo.completed = req.body.completed;
 
     await todo.save();
+    logDB('update', { collection: 'todos', todoId: todo._id, userId: req.user._id, changes: req.body });
     return res.json(todo);
   } catch (error) {
-    console.error('[TODOS] Update error:', error);
+    logError(error, { context: 'todos_update', userId: req.user._id, todoId: req.params.id });
     if (!res.headersSent) {
       return res.status(500).json({ error: error.message || 'Internal server error' });
     }
@@ -96,9 +100,10 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Todo not found' });
     }
 
+    logDB('delete', { collection: 'todos', todoId: todo._id, userId: req.user._id });
     return res.json({ message: 'Todo deleted successfully' });
   } catch (error) {
-    console.error('[TODOS] Delete error:', error);
+    logError(error, { context: 'todos_delete', userId: req.user._id, todoId: req.params.id });
     if (!res.headersSent) {
       return res.status(500).json({ error: error.message || 'Internal server error' });
     }
