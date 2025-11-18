@@ -7,6 +7,8 @@ function Dashboard({ onLogout }) {
   const [newTodo, setNewTodo] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState('');
 
   useEffect(() => {
     fetchTodos();
@@ -53,6 +55,31 @@ function Dashboard({ onLogout }) {
       setTodos(todos.filter((todo) => todo._id !== id));
     } catch (err) {
       setError('Failed to delete todo');
+    }
+  };
+
+  const handleEdit = (todo) => {
+    setEditingId(todo._id);
+    setEditText(todo.title);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditText('');
+  };
+
+  const handleSaveEdit = async (id) => {
+    if (!editText.trim()) return;
+
+    try {
+      const response = await api.put(`/api/todos/${id}`, {
+        title: editText,
+      });
+      setTodos(todos.map((todo) => (todo._id === id ? response.data : todo)));
+      setEditingId(null);
+      setEditText('');
+    } catch (err) {
+      setError('Failed to update todo');
     }
   };
 
@@ -105,21 +132,53 @@ function Dashboard({ onLogout }) {
                 onChange={() => handleToggleComplete(todo._id, todo.completed)}
                 style={styles.checkbox}
               />
-              <span
-                style={{
-                  ...styles.todoText,
-                  textDecoration: todo.completed ? 'line-through' : 'none',
-                  opacity: todo.completed ? 0.6 : 1,
-                }}
-              >
-                {todo.title}
-              </span>
-              <button
-                onClick={() => handleDelete(todo._id)}
-                style={styles.deleteButton}
-              >
-                Delete
-              </button>
+              {editingId === todo._id ? (
+                <>
+                  <input
+                    type="text"
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    style={styles.editInput}
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => handleSaveEdit(todo._id)}
+                    style={styles.saveButton}
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={handleCancelEdit}
+                    style={styles.cancelButton}
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span
+                    style={{
+                      ...styles.todoText,
+                      textDecoration: todo.completed ? 'line-through' : 'none',
+                      opacity: todo.completed ? 0.6 : 1,
+                    }}
+                  >
+                    {todo.title}
+                  </span>
+                  <button
+                    onClick={() => handleEdit(todo)}
+                    style={styles.editButton}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(todo._id)}
+                    style={styles.deleteButton}
+                  >
+                    Delete
+                  </button>
+                </>
+              )}
             </div>
           ))
         )}
@@ -195,6 +254,39 @@ const styles = {
     flex: 1,
     fontSize: '16px',
     color: '#333',
+  },
+  editInput: {
+    flex: 1,
+    padding: '8px',
+    border: '1px solid #ddd',
+    borderRadius: '4px',
+    fontSize: '14px',
+  },
+  editButton: {
+    padding: '6px 12px',
+    backgroundColor: '#28a745',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    marginRight: '8px',
+  },
+  saveButton: {
+    padding: '6px 12px',
+    backgroundColor: '#007bff',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    marginRight: '8px',
+  },
+  cancelButton: {
+    padding: '6px 12px',
+    backgroundColor: '#6c757d',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
   },
   deleteButton: {
     padding: '6px 12px',
